@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Secrets and local cluster configuration
+.env
+.env.*
+!.env.example
+*kubeconfig*
+*.key
+*.pem
+
+# Model artifacts
+models/
+*.safetensors
+*.bin
+*.gguf
+
+# Local benchmark artifacts
+results/**/raw/
+*.log
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
