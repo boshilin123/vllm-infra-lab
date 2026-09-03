@@ -1,0 +1,8 @@
+name: short
+description: Short prompt and response workload for concurrency saturation tests.
+prompt_tokens: 256
+output_tokens: 128
+concurrency: [1, 2, 4, 8, 16]
+warmup_requests: 10
+measured_requests: 100
+repeats: 3

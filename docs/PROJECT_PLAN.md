@@ -35,7 +35,7 @@ HAMi 不进入本项目的主标题和核心验收项。若后续开展 GPU 配�
 
 交付物：
 
-- Deployment、Service、ConfigMap 和健康检查。
+- Deployment、Service 和健康检查；非敏感参数增多后再引入 ConfigMap。
 - 固定版本的 vLLM 镜像与 Qwen3-8B 模型路径。
 - OpenAI `/v1/models` 和 `/v1/chat/completions` 冒烟测试。
 - 启动耗时、空闲显存和基础请求结果。

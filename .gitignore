@@ -19,8 +19,8 @@ models/
 *.gguf
 
 # Local benchmark artifacts
-results/**/raw/
 *.log
+results/**/prometheus-snapshot/
 
 # Editors and OS
 .idea/

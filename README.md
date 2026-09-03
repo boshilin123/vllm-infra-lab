@@ -68,13 +68,21 @@ flowchart LR
 
 ## 仓库结构
 
-```text
-deploy/       Kubernetes 基础清单与参数 overlays
-benchmark/    压测场景、工作负载配置与结果解析
-monitoring/   ServiceMonitor、PrometheusRule 与 Grafana Dashboard
-results/      原始结果、汇总数据和图表
-docs/         项目方案、实验方法和技术记录
-```
+~~~text
+vllm-infra-lab/
+├── deploy/kubernetes/   # Namespace、Deployment、Service 与持久化声明
+├── benchmark/
+│   ├── scenarios/       # 可版本化的压测负载定义
+│   ├── run_benchmark.py # 压测入口（Phase 2 实现）
+│   └── aggregate_results.py
+├── monitoring/          # ServiceMonitor、PrometheusRule 与 Grafana Dashboard
+├── analysis/            # 指标关联与绘图脚本
+├── scripts/             # 部署、冒烟测试与环境元数据采集
+├── results/             # 经脱敏的原始结果、汇总数据和图表
+└── docs/                # 架构、实验方法、Runbook 和性能报告
+~~~
+
+当前仓库是已定稿的轻量框架。文件会随 Phase 1–4 逐步填充；在第一个单副本基线跑通前，不额外引入前端、业务后端或数据库。
 
 ## 路线图
 

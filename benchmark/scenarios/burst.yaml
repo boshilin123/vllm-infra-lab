@@ -1,0 +1,15 @@
+name: burst
+description: Step load for replica and autoscaling experiments.
+stages:
+  - name: steady
+    request_rate: 1
+    duration_seconds: 120
+  - name: burst
+    request_rate: 8
+    duration_seconds: 300
+  - name: recovery
+    request_rate: 1
+    duration_seconds: 180
+prompt_tokens: 256
+output_tokens: 128
+repeats: 3
