@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# `kubectl apply -k deploy/kubernetes` 会按照此列表统一加载 Phase 1 资源。
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml

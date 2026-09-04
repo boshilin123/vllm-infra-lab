@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qwen3-8b
+  namespace: vllm-infra-lab
+  labels:
+    app.kubernetes.io/name: qwen3-8b
+    app.kubernetes.io/component: inference-server
+    app.kubernetes.io/part-of: vllm-infra-lab
+spec:
+  # Phase 1 只建立单副本基线，多副本与弹性扩缩容留到 Phase 4。
+  replicas: 1
+  # 使用 Recreate，避免滚动更新期间新旧 Pod 同时存在并额外占用一张 GPU。
+  strategy:
+    type: Recreate
+  # 模型首次加载可能耗时较长，因此将 Deployment 进度超时放宽到 15 分钟。
+  progressDeadlineSeconds: 900
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: qwen3-8b
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: qwen3-8b
+        app.kubernetes.io/component: inference-server
+        app.kubernetes.io/part-of: vllm-infra-lab
+    spec:
+      # 模型权重目前只存放在 qhvgpu1；迁移到共享存储后再移除此约束。
+      nodeSelector:
+        kubernetes.io/hostname: qhvgpu1
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: vllm
+          # 固定镜像版本保证实验可复现，禁止使用 latest。
+          image: vllm/vllm-openai:v0.9.1
+          imagePullPolicy: IfNotPresent
+          # v0.9.1 镜像入口是 OpenAI API Server，需要通过 --model 显式传入模型路径。
+          args:
+            # 容器内模型路径，对应下方只读 hostPath 挂载。
+            - --model
+            - /models/Qwen3-8B
+            - --served-model-name
+            - Qwen3-8B
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8000"
+            - --dtype
+            - bfloat16
+            - --max-model-len
+            - "4096"
+            - --max-num-seqs
+            - "8"
+            - --gpu-memory-utilization
+            - "0.85"
+          env:
+            # 强制只读取本地模型，避免启动时访问 Hugging Face 导致结果不稳定。
+            - name: HF_HUB_OFFLINE
+              value: "1"
+            - name: TRANSFORMERS_OFFLINE
+              value: "1"
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            # qhvgpu1 当前 CPU Request 较高，先以 2 核请求、4 核上限建立基线。
+            requests:
+              cpu: "2"
+              memory: 16Gi
+              # 扩展资源的 request 与 limit 必须相等，由 Device Plugin 分配具体 GPU。
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "4"
+              memory: 32Gi
+              nvidia.com/gpu: "1"
+          # startupProbe 成功前，Kubernetes 不会执行存活检查，避免模型加载时被误杀。
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            # 120 × 5 秒，最多允许约 10 分钟完成模型加载。
+            failureThreshold: 120
+          # readinessProbe 控制 Pod 是否可以接收 Service 流量。
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # livenessProbe 连续失败后重启失去响应的 vLLM 进程。
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            # 模型只读挂载，防止容器修改宿主机权重。
+            - name: model
+              mountPath: /models/Qwen3-8B
+              readOnly: true
+            # 用内存盘扩大 /dev/shm，供 PyTorch/vLLM 进程间通信使用。
+            - name: dshm
+              mountPath: /dev/shm
+            # 将运行时缓存放入 Pod 临时目录，不污染宿主机用户缓存。
+            - name: cache
+              mountPath: /root/.cache
+      volumes:
+        - name: model
+          # Phase 1 使用节点本地目录快速建立基线；该方式暂不支持跨节点调度。
+          hostPath:
+            path: /home/qhadmin/boshi/vllm/models/Qwen3-8B
+            type: Directory
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
+        - name: cache
+          emptyDir:
+            sizeLimit: 8Gi

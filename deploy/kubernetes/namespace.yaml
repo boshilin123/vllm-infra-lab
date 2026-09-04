@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  # 将个人项目资源放进独立命名空间，避免与集群里的业务服务混在一起。
+  name: vllm-infra-lab
+  labels:
+    app.kubernetes.io/part-of: vllm-infra-lab
