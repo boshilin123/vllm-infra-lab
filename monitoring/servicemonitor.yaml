@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: qwen3-8b
+  namespace: vllm-infra-lab
+  labels:
+    app.kubernetes.io/name: qwen3-8b
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: vllm-infra-lab
+    # 集群中的 Prometheus CR 只发现带有这个标签的 ServiceMonitor。
+    operator.insight.io/managed-by: insight
+spec:
+  # 这个 selector 匹配 Service 的 metadata.labels，不是 Pod 标签。
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: qwen3-8b
+      app.kubernetes.io/component: inference-server
+  # 明确限定目标 Service 所在的命名空间，避免误采集其他同名服务。
+  namespaceSelector:
+    matchNames:
+      - vllm-infra-lab
+  endpoints:
+    # 这里引用的是 Service ports[].name，而不是数字端口或容器端口名。
+    - port: http
+      path: /metrics
+      scheme: http
+      # 15 秒粒度便于观察短时压测中的排队与 KV Cache 变化。
+      interval: 15s
+      scrapeTimeout: 10s
