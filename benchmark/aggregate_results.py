@@ -185,7 +185,12 @@ def summarize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=list(rows[0]))
+        # csv 模块默认使用 CRLF；仓库统一写 LF，避免 Git 将 \r 识别成行尾空白。
+        writer = csv.DictWriter(
+            file,
+            fieldnames=list(rows[0]),
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
 
