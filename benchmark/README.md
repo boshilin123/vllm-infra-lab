@@ -30,3 +30,19 @@ python benchmark/run_benchmark.py \
 ```
 
 去掉 `--dry-run` 后，每次重复都会先执行场景定义的预热请求，再执行正式请求。原始 JSON 和 `metadata.yaml` 保存到 `results/YYYY-MM-DD/<experiment-id>/`。物理 GPU 编号和 UUID 必须在每组实验前从宿主机与容器交叉核对；Pod 重建后不得沿用旧值。
+
+## 校验与汇总结果
+
+先使用 `--check-only` 验证轮次数、成功请求数、并发、模型、输入/输出 Token 长度和错误列表，不写文件：
+
+```bash
+python benchmark/aggregate_results.py \
+  --experiment-dir results/YYYY-MM-DD/<experiment-id> \
+  --check-only
+```
+
+去掉 `--check-only` 后生成：
+
+- `per-repeat.csv`：每轮原始核心指标，便于横向检查异常轮次。
+- `summary.csv`：各指标跨重复实验的均值、中位数、范围、标准差和变异系数。
+- `aggregate.json`：保留实验身份、校验状态和结构化汇总，供后续跨并发绘图脚本读取。
