@@ -191,15 +191,17 @@ def main() -> int:
     if not args.server_gpu_uuid.startswith("GPU-"):
         raise ValueError("server-gpu-uuid 应以 GPU- 开头")
 
-    # 每次重复使用不同但固定的种子，避免 Prefix Cache 命中上一轮相同提示词。
+    # 每个并发档位和重复轮次使用不同但固定的种子，避免跨实验命中旧的 Prefix Cache。
+    # 减 1 使并发 1 继续使用已经建立基线时的 42/43/44 与 10001/10002/10003。
+    concurrency_seed_offset = (args.concurrency - 1) * 1_000
     commands: list[tuple[str, list[str]]] = []
     timestamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
     experiment_id = f"{timestamp}-{scenario['name']}-c{args.concurrency}"
     result_dir = REPO_ROOT / "results" / datetime.now().strftime("%Y-%m-%d") / experiment_id
 
     for repeat in range(1, scenario["repeats"] + 1):
-        warmup_seed = 10_000 + repeat
-        measured_seed = 42 + repeat - 1
+        warmup_seed = 10_000 + concurrency_seed_offset + repeat
+        measured_seed = 42 + concurrency_seed_offset + repeat - 1
         warmup = benchmark_command(
             vllm=vllm,
             base_url=args.base_url,
@@ -254,7 +256,10 @@ def main() -> int:
         "scenario_file": str(scenario_path.relative_to(REPO_ROOT)),
         "scenario": scenario,
         "selected_concurrency": args.concurrency,
-        "seed_policy": "warmup=10000+repeat, measured=42+repeat-1",
+        "seed_policy": (
+            "offset=(concurrency-1)*1000; "
+            "warmup=10000+offset+repeat; measured=42+offset+repeat-1"
+        ),
     }
     with (result_dir / "metadata.yaml").open("w", encoding="utf-8") as file:
         yaml.safe_dump(metadata, file, allow_unicode=True, sort_keys=False)

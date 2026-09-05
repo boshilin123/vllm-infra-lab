@@ -31,6 +31,8 @@ python benchmark/run_benchmark.py \
 
 去掉 `--dry-run` 后，每次重复都会先执行场景定义的预热请求，再执行正式请求。原始 JSON 和 `metadata.yaml` 保存到 `results/YYYY-MM-DD/<experiment-id>/`。物理 GPU 编号和 UUID 必须在每组实验前从宿主机与容器交叉核对；Pod 重建后不得沿用旧值。
 
+随机种子由并发档位和重复轮次共同决定：同一实验可以复现，不同并发档位不会生成相同 Prompt，从而避免服务端 Prefix Cache 复用上一档实验的 KV Cache。各档位仍保持相同的输入/输出 Token 长度，因此并发仍是主要控制变量。
+
 ## 校验与汇总结果
 
 先使用 `--check-only` 验证轮次数、成功请求数、并发、模型、输入/输出 Token 长度和错误列表，不写文件：
