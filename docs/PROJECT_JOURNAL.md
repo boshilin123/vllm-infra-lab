@@ -124,13 +124,13 @@ GitHub 的提示“does not provide shell access”是正常现象，表示 SSH 
 
 曾遇到 `.git/config: Permission denied`，原因是此前用 `sudo` 造成仓库文件所有权不一致。修复所有权后，以普通用户执行 Git 操作。后续不要用 `sudo git ...`。
 
-截至并发 16 正式结果整理时，远端最新提交为：
+截至 `max-num-seqs` 参数实验准备前，远端最新提交为：
 
 ```text
-fc55fea docs: record concurrency-16 benchmark hypothesis
+9cd6718 data: add concurrency-16 saturation baseline
 ```
 
-并发 16 事前假设已经推送；并发 16 原始结果和本轮报告已生成，当前等待项目本人检查和提交。
+并发 16 原始结果、报告和复盘均已推送；当前开始准备 `max-num-seqs=8→16` 控制变量实验。
 
 ### 3.2 Kubernetes 集群
 
@@ -604,8 +604,9 @@ Short SLO v1 从 c16 起正式生效：请求成功率 ≥99%、P95 TTFT ≤600 
 | `13b0343` | 记录并发 8 事前假设 | 修复文档格式并在实验前冻结判断 |
 | `000f8c3` | 增加并发 8 基线和 SLO v1 | 固化 c8 数据并为 c16 建立前瞻性延迟标准 |
 | `fc55fea` | 记录并发 16 事前假设 | 在 c16 实验前冻结排队、吞吐、延迟和 KV Cache 判断 |
+| `9cd6718` | 增加并发 16 饱和基线 | 固化当前 `max-num-seqs=8` 下的吞吐平台与排队代价 |
 
-以上条目均已提交到 `origin/main`。并发 16 原始结果和报告是当前待提交内容。
+以上条目均已提交到 `origin/main`。当前工作进入 `max-num-seqs` 参数实验准备阶段。
 
 ## 9. 已遇到的故障与面试价值
 
@@ -720,6 +721,26 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 
 若只把 `max-num-seqs` 提高到 16，预计 running 上限提高、waiting 减少，短请求 KV Cache 峰值可能从约 13.5%提高到约 27%；随后瓶颈更可能转向计算吞吐和更宽批次的调度开销，TPOT 也可能恶化。该判断需要控制变量实验验证，不能仅凭 KV Cache 余量下结论。
 
+### 11.5 `max-num-seqs=16` 参数实验之前
+
+固定客户端并发 16、256/128 Token、Qwen3-8B BF16、同一张 A10、`max-model-len=4096` 和 `gpu-memory-utilization=0.85`，只把服务端 `max-num-seqs` 从 8 改成 16。请项目本人先书面回答：
+
+1. 稳定阶段预计 running、waiting 各是多少？为什么？
+2. 输出吞吐相对 `c16-mns8` 的 179.29 tok/s 预计提高多少？不要只回答“翻倍”，请给出一个区间及依据。
+3. P95 TTFT、P95 TPOT、P95 E2E 分别可能改善还是恶化？哪些指标有机会重新满足 SLO v1？
+4. KV Cache 峰值预计是多少？若实测明显低于或高于约 27%，分别可能说明什么？
+5. 如果吞吐提高但 P95 TPOT 或 E2E 仍违反 SLO，应如何在 `mns8` 与 `mns16` 之间选择？
+
+实验执行者原始回答：预计 `running=0、waiting=0`，理由是客户端并发和服务端并发上限都是 16；预计输出吞吐提高 80%–90%；预计 TTFT 和 E2E 改善并满足 SLO；预计 KV Cache 约 27%，认为高于该值说明性能或批处理瓶颈、低于则说明批处理效果较好；若吞吐提高但延迟仍违反 SLO，选择 mns8。
+
+校正后的可检验假设：
+
+1. 稳定阶段应为 `running≈16、waiting≈0`。客户端有 16 个未完成请求，服务端最多允许 16 条序列运行；只有轮次尾部请求逐渐完成时 running 才会下降。
+2. 不预设 80%–90%的近翻倍收益。mns8 已使 GPU-Util 约 96%–97%，mns16 虽扩大批宽，但单条序列 TPOT 很可能因共享计算资源而上升。暂以输出吞吐提高 **20%–60%**作为宽范围假设，即约 **215–287 tok/s**，最终以实测为准。
+3. P95 TTFT 会因服务端 waiting 减少而比 mns8 的 6015 ms 显著改善，但 16 条序列同时 Prefill 仍可能使它高于 600 ms，因此不预设一定通过 TTFT SLO。P95 TPOT 可能高于 mns8 的 42.70 ms，并存在越过 50 ms 的风险；P95 E2E 同时受 TTFT 改善和 TPOT 累积恶化影响，可能下降，但也不预设一定低于 6 秒。
+4. 若 16 条请求完整并行且长度分布相同，KV Cache 峰值初步预计约为 mns8 的两倍，即 **25%–30%**。明显低于该范围可能意味着采样未捕获峰值、请求没有同时达到最长状态、实际 running 未到 16 或发生调度/抢占；明显高于则应检查 block 对齐、Prefix Cache 残留、额外序列或指标口径。KV Cache 百分比表示显存块占用，不直接等价于计算性能或批处理效率。
+5. 若 c16 流量下 mns16 吞吐提高但仍违反 SLO，mns8 也不能作为该负载的合格方案，因为它已经在 c16 下违反 TTFT/E2E SLO。应限制单副本入口并发到约 8，或通过多副本扩容分担 16 并发；只有在业务明确接受更宽松延迟目标时，才可根据吞吐优先考虑 mns16。
+
 ## 12. 当前阶段与下一步
 
 ### 12.1 阶段状态
@@ -728,7 +749,7 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 | --- | --- | --- | --- |
 | Phase 0 环境与安全边界 | 已完成 | 软硬件、模型、共享工作负载、Git 认证盘点 | 每次实验前刷新动态资源快照 |
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
-| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发 1/2/4/8/16 扫描 | 提交 c16 结果，执行 `max-num-seqs`、长输入等参数实验 |
+| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发 1/2/4/8/16 扫描 | 执行 `max-num-seqs=16`、长输入等参数实验 |
 | Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 查询 | Grafana Dashboard、统一时间线、故障场景 |
 | Phase 4 多副本与弹性 | 计划中 | 架构和指标方向 | 第二张可用 GPU、共享模型、Adapter/KEDA、HPA 与突发流量实验 |
 
@@ -736,23 +757,13 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 
 ### 12.2 紧接着要做什么
 
-第一步由项目本人检查并发 16 的原始结果、汇总和实验报告：
+第一步，补全参数实验的可复现记录：benchmark runner 必须把 `max-num-seqs`、`max-model-len` 和 `gpu-memory-utilization` 写入 metadata，并在实验目录名中标识 `mns16`。由项目本人检查并提交该工具改动及事前假设。
 
-```bash
-cd /home/qhadmin/boshi/vllm/vllm-infra-lab
+第二步，在修改集群前回答 11.5 的五个问题，冻结对吞吐、延迟、waiting 和 KV Cache 的预测。只改变 `max-num-seqs`，其他服务端与负载变量保持不变。
 
-git status --short
-git diff --check
-git diff -- README.md docs/PROJECT_JOURNAL.md
-git diff --no-index /dev/null \
-  results/2026-09-05/20260905-183347-short-c16/README.md
-```
+第三步，由项目本人先把 `deploy/kubernetes/deployment.yaml` 中 `--max-num-seqs` 从 `8` 改为 `16`，执行 client/server dry-run、检查 diff 并提交配置，再正式 apply。Deployment 使用 Recreate，应用后旧 Pod 会退出并重新加载模型，期间服务暂时不可用。
 
-重点确认三轮均为 100/100 成功，并理解“吞吐平台来自运行批宽仍为 8”“waiting 主要影响 TTFT/E2E 而非 TPOT”“KV Cache 富余不等于 c16 满足业务 SLO”三个结论。
-
-第二步，在确认内容准确后，由项目本人提交并推送 c16 结果。提交前使用 `git add` 后再次检查 staged diff。
-
-第三步，设计 `max-num-seqs=8→16` 的控制变量实验：保持客户端并发 16、256/128 Token、GPU、模型和重复次数不变。实验前先书面预测吞吐、TTFT、TPOT、waiting 和 KV Cache，再由项目本人修改 Deployment、等待 Pod 重建并执行。
+第四步，等待新 Pod Ready 后重新核对 Pod args、Endpoint、GPU UUID 和共享负载，再建立端口转发并运行 `c16-mns16` 三轮实验。实验完成后是否保留 mns16 作为部署默认值，要依据 SLO 和吞吐实测决定，不能因为 KV Cache 有余量就提前决定。
 
 事前容量估算是：若 16 条短请求同时运行，KV Cache 峰值可能约为当前的两倍，即约 27%，仍低于容量边界；但吞吐不会因此必然翻倍，TPOT 还可能因批次更宽而上升。完成参数实验后，再进入长输入场景，避免同时改变请求长度和服务端参数。
 
@@ -764,7 +775,7 @@ git diff --no-index /dev/null \
 - 将 vLLM `/metrics` 通过 ServiceMonitor 接入既有 Prometheus，验证 target 存活和真实请求指标持续入库。
 - 构建固定 Token 长度、预热、三轮重复、种子隔离和 JSON/CSV 汇总的可复现压测流程；在单张 A10、256/128 Token、`max-num-seqs=8` 场景下，并发 1→8 的输出吞吐从 28.35 提高到 178.80 tok/s；继续提高到 c16 时吞吐仅为 179.29 tok/s，而 P95 E2E 增至 11.10 s，定位出当前配置的平台与排队代价。五档实验均为 300/300 请求成功。
 
-第三条的 c1–c8 原始数据和报告已提交；c16 当前等待提交，提交后才可作为已固化的远端证据。面试前仍应从原始 JSON 独立复算一次。
+第三条的 c1–c16 原始数据和报告均已提交，可作为已固化的远端证据；面试前仍应从原始 JSON 独立复算一次。
 
 ### 13.2 目前不能声称
 

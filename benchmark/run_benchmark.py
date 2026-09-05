@@ -50,6 +50,24 @@ def parse_args() -> argparse.Namespace:
         help="容器内外一致的 GPU UUID，用于跨 Pod 重建识别同一设备。",
     )
     parser.add_argument(
+        "--server-max-num-seqs",
+        type=int,
+        required=True,
+        help="服务端实际生效的 max-num-seqs，用于记录控制变量。",
+    )
+    parser.add_argument(
+        "--server-max-model-len",
+        type=int,
+        required=True,
+        help="服务端实际生效的 max-model-len，用于记录控制变量。",
+    )
+    parser.add_argument(
+        "--server-gpu-memory-utilization",
+        type=float,
+        required=True,
+        help="服务端实际生效的 gpu-memory-utilization，用于记录控制变量。",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="只打印命令，不发请求也不创建结果目录。",
@@ -190,13 +208,22 @@ def main() -> int:
         raise ValueError("server-gpu-physical-index 不能为负数")
     if not args.server_gpu_uuid.startswith("GPU-"):
         raise ValueError("server-gpu-uuid 应以 GPU- 开头")
+    if args.server_max_num_seqs <= 0:
+        raise ValueError("server-max-num-seqs 必须是正整数")
+    if args.server_max_model_len <= 0:
+        raise ValueError("server-max-model-len 必须是正整数")
+    if not 0 < args.server_gpu_memory_utilization <= 1:
+        raise ValueError("server-gpu-memory-utilization 必须在 (0, 1] 范围内")
 
     # 每个并发档位和重复轮次使用不同但固定的种子，避免跨实验命中旧的 Prefix Cache。
     # 减 1 使并发 1 继续使用已经建立基线时的 42/43/44 与 10001/10002/10003。
     concurrency_seed_offset = (args.concurrency - 1) * 1_000
     commands: list[tuple[str, list[str]]] = []
     timestamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
-    experiment_id = f"{timestamp}-{scenario['name']}-c{args.concurrency}"
+    experiment_id = (
+        f"{timestamp}-{scenario['name']}-c{args.concurrency}"
+        f"-mns{args.server_max_num_seqs}"
+    )
     result_dir = REPO_ROOT / "results" / datetime.now().strftime("%Y-%m-%d") / experiment_id
 
     for repeat in range(1, scenario["repeats"] + 1):
@@ -252,6 +279,11 @@ def main() -> int:
             "node": args.server_node,
             "gpu_physical_index": args.server_gpu_physical_index,
             "gpu_uuid": args.server_gpu_uuid,
+            "engine": {
+                "max_num_seqs": args.server_max_num_seqs,
+                "max_model_len": args.server_max_model_len,
+                "gpu_memory_utilization": args.server_gpu_memory_utilization,
+            },
         },
         "scenario_file": str(scenario_path.relative_to(REPO_ROOT)),
         "scenario": scenario,

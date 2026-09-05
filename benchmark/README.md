@@ -26,10 +26,15 @@ python benchmark/run_benchmark.py \
   --server-node qhvgpu1 \
   --server-gpu-physical-index 3 \
   --server-gpu-uuid GPU-c9ee2ea8-993d-e7e2-7e3f-7a183b63d573 \
+  --server-max-num-seqs 8 \
+  --server-max-model-len 4096 \
+  --server-gpu-memory-utilization 0.85 \
   --dry-run
 ```
 
-去掉 `--dry-run` 后，每次重复都会先执行场景定义的预热请求，再执行正式请求。原始 JSON 和 `metadata.yaml` 保存到 `results/YYYY-MM-DD/<experiment-id>/`。物理 GPU 编号和 UUID 必须在每组实验前从宿主机与容器交叉核对；Pod 重建后不得沿用旧值。
+去掉 `--dry-run` 后，每次重复都会先执行场景定义的预热请求，再执行正式请求。原始 JSON 和 `metadata.yaml` 保存到 `results/YYYY-MM-DD/<experiment-id>/`。目录名包含客户端并发和服务端 `max-num-seqs`，例如 `short-c16-mns8`，便于区分参数实验。
+
+物理 GPU 编号和 UUID 必须在每组实验前从宿主机与容器交叉核对；Pod 重建后不得沿用旧值。三个 `--server-*` 引擎参数只负责把服务端实际配置写入 metadata，并不会远程修改 vLLM；运行前必须用 Deployment args 或 Pod command 核对它们与真实配置一致。
 
 随机种子由并发档位和重复轮次共同决定：同一实验可以复现，不同并发档位不会生成相同 Prompt，从而避免服务端 Prefix Cache 复用上一档实验的 KV Cache。各档位仍保持相同的输入/输出 Token 长度，因此并发仍是主要控制变量。
 
