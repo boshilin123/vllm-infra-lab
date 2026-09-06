@@ -1,0 +1,235 @@
+{
+  "validation": "passed",
+  "experiment_id": "20260906-134338-prefill-focused-c8-mns8",
+  "git_commit": "da604fe15147b72a7341b7370eef168eef1d8c05",
+  "model": "Qwen3-8B",
+  "server": {
+    "node": "qhvgpu1",
+    "gpu_physical_index": 1,
+    "gpu_uuid": "GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116",
+    "engine": {
+      "max_num_seqs": 8,
+      "max_model_len": 4096,
+      "gpu_memory_utilization": 0.85
+    }
+  },
+  "scenario": {
+    "name": "prefill-focused",
+    "description": "Increase only prompt length relative to short for Prefill and TTFT analysis.",
+    "prompt_tokens": 1024,
+    "output_tokens": 128,
+    "concurrency": [
+      8
+    ],
+    "warmup_requests": 10,
+    "measured_requests": 60,
+    "repeats": 3,
+    "seed_offset": 100000
+  },
+  "selected_concurrency": 8,
+  "repeat_files": [
+    "repeat-01.json",
+    "repeat-02.json",
+    "repeat-03.json"
+  ],
+  "metrics": {
+    "duration": {
+      "metric": "duration",
+      "unit": "s",
+      "repeat_count": 3,
+      "mean": 55.22569370021423,
+      "median": 55.25005476176739,
+      "min": 55.15870851278305,
+      "max": 55.26831782609224,
+      "stdev": 0.05872517672196347,
+      "cv_percent": 0.10633669364253848
+    },
+    "request_throughput": {
+      "metric": "request_throughput",
+      "unit": "req/s",
+      "repeat_count": 3,
+      "mean": 1.086451635727767,
+      "median": 1.0859717743034625,
+      "min": 1.085612921833382,
+      "max": 1.0877702110464567,
+      "stdev": 0.0011559301134210914,
+      "cv_percent": 0.10639499038968116
+    },
+    "output_throughput": {
+      "metric": "output_throughput",
+      "unit": "tok/s",
+      "repeat_count": 3,
+      "mean": 139.06580937315417,
+      "median": 139.0043871108432,
+      "min": 138.9584539946729,
+      "max": 139.23458701394645,
+      "stdev": 0.1479590545178997,
+      "cv_percent": 0.10639499038968116
+    },
+    "total_token_throughput": {
+      "metric": "total_token_throughput",
+      "unit": "tok/s",
+      "repeat_count": 3,
+      "mean": 1251.5922843583876,
+      "median": 1251.0394839975888,
+      "min": 1250.6260859520562,
+      "max": 1253.111283125518,
+      "stdev": 1.3316314906610105,
+      "cv_percent": 0.10639499038967422
+    },
+    "mean_ttft_ms": {
+      "metric": "mean_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 736.5971652583943,
+      "median": 721.2136613825957,
+      "min": 718.9524999509255,
+      "max": 769.6253344416618,
+      "stdev": 28.625568683502596,
+      "cv_percent": 3.8861904489492436
+    },
+    "p50_ttft_ms": {
+      "metric": "p50_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 629.8262986044089,
+      "median": 629.1910894215107,
+      "min": 528.2838381826878,
+      "max": 732.0039682090282,
+      "stdev": 101.86155046197165,
+      "cv_percent": 16.172959225056182
+    },
+    "p95_ttft_ms": {
+      "metric": "p95_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 1393.7887741873658,
+      "median": 1464.013822004199,
+      "min": 1229.0358550846565,
+      "max": 1488.3166454732418,
+      "stdev": 143.19671809014955,
+      "cv_percent": 10.27391816766776
+    },
+    "p99_ttft_ms": {
+      "metric": "p99_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 1713.9181460191805,
+      "median": 1723.9754540473223,
+      "min": 1667.443820312619,
+      "max": 1750.3351636976004,
+      "stdev": 42.350983289900334,
+      "cv_percent": 2.471003845094151
+    },
+    "mean_tpot_ms": {
+      "metric": "mean_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 49.48935312457703,
+      "median": 49.65252139730248,
+      "min": 49.15766262710877,
+      "max": 49.65787534931984,
+      "stdev": 0.28726487043076937,
+      "cv_percent": 0.5804579213384586
+    },
+    "p50_tpot_ms": {
+      "metric": "p50_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 49.77406850793543,
+      "median": 49.83082883001312,
+      "min": 49.64700482023044,
+      "max": 49.844371873562736,
+      "stdev": 0.11024853312874527,
+      "cv_percent": 0.2214979334292684
+    },
+    "p95_tpot_ms": {
+      "metric": "p95_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 53.12744135873055,
+      "median": 53.146927838954404,
+      "min": 53.056191259951106,
+      "max": 53.17920497728614,
+      "stdev": 0.06377997998417625,
+      "cv_percent": 0.12005091597300337
+    },
+    "p99_tpot_ms": {
+      "metric": "p99_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 53.23388312979946,
+      "median": 53.229596991473294,
+      "min": 53.179838058986064,
+      "max": 53.29221433893902,
+      "stdev": 0.05631061454405788,
+      "cv_percent": 0.10577964866240634
+    },
+    "mean_itl_ms": {
+      "metric": "mean_itl_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 49.489355381262065,
+      "median": 49.652523716564566,
+      "min": 49.157664875971676,
+      "max": 49.657877551249946,
+      "stdev": 0.2872648766579438,
+      "cv_percent": 0.5804579074527805
+    },
+    "p95_itl_ms": {
+      "metric": "p95_itl_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 43.653442338109016,
+      "median": 43.14323849976062,
+      "min": 43.09990331530571,
+      "max": 44.71718519926071,
+      "stdev": 0.9214831200523074,
+      "cv_percent": 2.110905969144756
+    },
+    "mean_e2el_ms": {
+      "metric": "mean_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 7021.745012079676,
+      "median": 7024.8227174083395,
+      "min": 7012.6484880844755,
+      "max": 7027.763830746213,
+      "stdev": 8.013900330862498,
+      "cv_percent": 0.11412975431429073
+    },
+    "p50_e2el_ms": {
+      "metric": "p50_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 7056.859266012907,
+      "median": 7060.258865356445,
+      "min": 7047.345884144306,
+      "max": 7062.97304853797,
+      "stdev": 8.349851706412803,
+      "cv_percent": 0.11832249151725582
+    },
+    "p95_e2el_ms": {
+      "metric": "p95_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 7362.046482414007,
+      "median": 7354.942444339394,
+      "min": 7343.761021643877,
+      "max": 7387.43598125875,
+      "stdev": 22.68757461837561,
+      "cv_percent": 0.30816940198041753
+    },
+    "p99_e2el_ms": {
+      "metric": "p99_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 7795.411834592621,
+      "median": 7809.409378767014,
+      "min": 7714.680867344139,
+      "max": 7862.145257666707,
+      "stdev": 74.72205186882408,
+      "cv_percent": 0.9585388617602006
+    }
+  }
+}

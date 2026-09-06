@@ -134,13 +134,13 @@ GitHub 的提示“does not provide shell access”是正常现象，表示 SSH 
 
 曾遇到 `.git/config: Permission denied`，原因是此前用 `sudo` 造成仓库文件所有权不一致。修复所有权后，以普通用户执行 Git 操作。后续不要用 `sudo git ...`。
 
-截至单副本 mns8 回退验收完成时，远端最新提交为：
+截至 Prefill/Decode 对照正式执行前，远端最新提交为：
 
 ```text
-cac1a7a deploy: restore single-replica mns8 baseline
+da604fe bench: prepare prefill and decode comparison
 ```
 
-`c16-mns16` 三轮正式结果、报告和复盘均已推送；版本化 Deployment 和集群均已恢复单副本 mns8，启动与资源归属验收通过。
+Prefill/Decode 场景、独立随机种子和 Long SLO v1 已推送。四组单卡正式结果及报告已生成，当前等待项目本人检查和提交。
 
 ### 3.2 Kubernetes 集群
 
@@ -565,6 +565,27 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 
 三轮均为 100/100 请求成功，吞吐 CV 为 0.308%；未观察到 OOM、CUDA error 或 preemption。mns16 提升了单卡吞吐，但尚未同时满足 TTFT/E2E SLO。
 
+### 7.10 Prefill / Decode 单变量对照
+
+为避免 Pod 重建后物理 GPU 从 3 变成 1 所造成的硬件与时间窗口混淆，先在当前 GPU 上重跑 256/128 c8-mns8 校准，再依次执行三种负载。四组均固定 Qwen3-8B BF16、单张 A10、客户端并发 8、服务端 `max-num-seqs=8`、`max-model-len=4096` 和 `gpu-memory-utilization=0.85`。
+
+| 场景 | 输入/输出 | 输出吞吐 tok/s | P95 TTFT ms | P95 TPOT ms | P95 E2E ms | 成功请求 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Short 校准 | 256/128 | 180.649355 | 486.414863 | 41.948177 | 5496.814455 | 300/300 |
+| Prefill 对照 | 1024/128 | 139.004387 | 1464.013822 | 53.146928 | 7354.942444 | 180/180 |
+| Decode 对照 | 256/256 | 182.642375 | 525.220729 | 41.041296 | 10593.704943 | 180/180 |
+| 组合长上下文 | 1024/256 | 158.051827 | 1426.444415 | 47.145184 | 12788.776909 | 180/180 |
+
+只增加 Prompt 时，输出吞吐下降 23.05%，P95 TTFT 上升 200.98%，P95 TPOT 也上升 26.70%。首波 `8 × 1024=8192` Prompt tokens 高于 `max_num_batched_tokens=2048`，Chunked Prefill 需要分块推进；即使客户端并发等于 `max-num-seqs`，token budget 仍可能使请求短暂出现在 waiting 状态。
+
+只增加输出时，P95 TPOT 从 41.948 ms 变为 41.041 ms，基本不变；P95 E2E 增加 5096.890 ms，与事前估算的 `128 × 40 ms≈5.1 s`几乎一致。请求吞吐下降 49.45%，但输出吞吐小幅增加 1.10%，说明更长输出主要延长单请求占用时间，并未显著改变稳定 Decode 的生成 Token 速率。
+
+组合长上下文相对 Short 的输出吞吐下降 12.51%，P95 TTFT、TPOT、E2E 分别上升 193.26%、12.39%、132.66%。其 KV Cache 采样峰值 44.36%，接近 `8 × (1024+256) / 22832≈44.85%` 的满长度简单上界，未触及 KV 容量上限。
+
+四种负载均无请求失败。三种长负载按实验前冻结的 Long SLO v1（成功率 ≥99%、P95 TTFT ≤1500 ms、P95 TPOT ≤55 ms、P95 E2E ≤13 s）全部通过；但 Prefill 场景的 P95 TTFT 仅剩约 36 ms 余量，组合场景的 P95 E2E 仅剩约 211 ms，且组合场景 P99 E2E 为 13033.939 ms。P95 判定通过不等于更严格尾延迟或更长上下文也能通过。
+
+输出吞吐只统计生成 Token，Prompt 变长会因 Prefill 占用 GPU 时间而使它下降。总 Token 吞吐同时统计输入和输出，例如 Prefill 对照达到 1251.039 tok/s，不能把这个更大的数解释为 Decode 生成能力提高。类似地，Prefill 对照到组合场景的输出吞吐增加 13.70%，主要是固定 Prefill 成本被更多输出 Token 摊薄，而非 TPOT 必然改善。
+
 ## 8. 关键互动与实际执行记录
 
 这一节按实际发生顺序记录重要操作和认知变化，不逐字复制聊天，而是保留每次互动中可复用的工程事实。
@@ -623,6 +644,11 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 19. 用户检查并提交 mns16 原始结果和报告为 `5776be0`；随后重新确认项目仍处于 Phase 2，决定先恢复单副本 mns8、完成长输入与可观测性交付，再进入最多两副本的 Phase 4。
 20. 用户提交恢复清单和共享环境安全边界为 `cac1a7a` 并正式 apply；新 Pod `qwen3-8b-8fc88c5c9-5bmsd` Ready、0 次重启，Endpoint 指向 `10.244.64.214:8000`，启动参数确认 `max_num_seqs=8`，KV Cache 容量仍为 3.14 GiB、22,832 tokens、1427 blocks。
 21. 新 Pod 被 Device Plugin 分配到宿主机物理 GPU 1（`GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116`），不再是历史基线使用的物理 GPU 3。只读审计确认 GPU 0 上的公司 Qwen3-TTS 进程占用约 5.9 GiB，GPU 1 上本项目 vLLM 占用约 19.8 GiB，两者没有重叠；同时 `default/magic-pdf-gpu-api` 仍声明一张整卡，因此不能把其余空闲卡直接认定为可用于个人项目。
+22. 用户完成 Prefill/Decode 事前回答，Agent 校正 TTFT 方向、E2E 估算和 KV Cache 上界解释，定义 Long SLO v1；用户检查并提交实验设计为 `da604fe`。
+23. 在同一 Pod、物理 GPU 1 和相邻时间窗口完成 Short 校准、Prefill、Decode、组合长上下文四组实验，共 840/840 个正式请求成功。
+24. 单变量结果验证：Prompt 从 256 增至 1024 使 P95 TTFT 上升约 201%；输出从 128 增至 256 使 P95 E2E 增加约 5.097 秒而 P95 TPOT 基本不变；组合场景 KV Cache 峰值约 44.36%。
+25. 实验结束后 GPU 回到空闲、vLLM metrics 仍正常返回；Agent 只关闭本项目的 benchmark、monitor 和 port-forward tmux，会话列表确认公司 `qwen3-tts-stage3` 未受影响。
+26. 最终审计确认 Pod `Ready=true`、Running、0 次重启，近两小时严格系统故障、HTTP 4xx/5xx 和 namespace Warning Event 均为 0。宽泛搜索 `error|exception|traceback` 曾命中数百条随机 Prompt 文本，并非服务故障；同时发现正确 Pod 标签是 `app.kubernetes.io/name=qwen3-8b`，旧 selector `app=qwen3-8b` 会返回空表。
 
 ### 8.5 关键 Git 里程碑
 
@@ -647,8 +673,9 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 | `ca85714` | 记录 mns16 部署验收 | 固化精确 KV Cache 容量和新 Pod 启动证据 |
 | `5776be0` | 增加 mns16 参数实验结果 | 固化 70.36%吞吐收益和仍未通过 TTFT/E2E SLO 的边界 |
 | `cac1a7a` | 恢复单副本 mns8 基线 | 固化 Phase 0–3 单卡默认值和最多两卡的共享环境安全边界 |
+| `da604fe` | 准备 Prefill/Decode 对照 | 固化四场景、独立种子、事前假设和 Long SLO v1 |
 
-以上条目均已提交到 `origin/main`。当前本地开始准备 Phase 2 的 Prefill/Decode 单变量实验设计。
+以上条目均已提交到 `origin/main`。四组正式数据和实验 README 当前尚未提交，不能把它们写成远端已固化证据。
 
 ## 9. 已遇到的故障与面试价值
 
@@ -665,6 +692,8 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 | CSV diff 出现 `^M` | Python CSV 默认 CRLF | 显式设置 LF 并用 `git diff --check` | 可复现实验也包括稳定文件格式 |
 | 跨并发 Prompt 可能重复 | 固定种子只按轮次变化 | 加入并发种子偏移 | Prefix Cache 是控制变量污染源 |
 | c8 首次启动参数不兼容 | 只直接调用虚拟环境 Python，runner 的 PATH 找到系统 vLLM | 显式激活 venv 后重跑，确认客户端为 0.9.1 | Python 解释器正确不代表子进程可执行文件也正确 |
+| 错误日志搜索出现数百条命中 | 随机 Prompt 被 INFO 日志原样记录，文本自然包含 Error/Traceback 等词 | 排除 `Received request`，按日志级别、明确故障短语和 HTTP 状态码分类 | 关键词命中不等于异常，日志审计要识别字段语义与日志级别 |
+| 带 `app=qwen3-8b` 的 Pod 查询为空 | 清单使用标准标签 `app.kubernetes.io/name`，并无 `app` 标签 | 先不加 selector 查看真实 labels，再使用标准标签 | 空查询结果不等于工作负载消失，应先验证筛选条件 |
 
 面试时不要只说“最后跑通了”。更有价值的表达结构是：**现象 → 收集什么证据 → 排除什么 → 根因 → 修复 → 如何防止复发**。
 
@@ -815,7 +844,7 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 | --- | --- | --- | --- |
 | Phase 0 环境与安全边界 | 已完成 | 软硬件、模型、共享工作负载、Git 认证盘点 | 每次实验前刷新动态资源快照 |
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
-| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16 对照、恢复 mns8 | 执行长输入、Prefill/Decode 对照和结果图表 |
+| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16、Prefill/Decode/组合长上下文数据 | 检查并提交四组结果，生成性能图表 |
 | Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 查询 | Grafana Dashboard、统一时间线、故障场景 |
 | Phase 4 多副本与弹性 | 计划中 | 架构和指标方向 | 第二张可用 GPU、共享模型、Adapter/KEDA、HPA 与突发流量实验 |
 
@@ -833,7 +862,9 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 
 第五步已完成：mns16 结果已提交为 `5776be0`；版本化 Deployment 和集群均已恢复单副本 mns8。回退后的 Pod 健康，但被重新分配到物理 GPU 1，因此历史 GPU 3 上的 Short 数据不能直接充当严格的当前硬件对照。
 
-第六步正在进行：固定并发 8 和 mns8，在当前 Pod/GPU 的相邻时间窗口依次执行 `256/128` 校准、`1024/128` Prefill 对照、`256/256` Decode 对照和 `1024/256` 组合长上下文。新增场景使用独立种子；正式执行前先冻结预期，再由项目本人审核并提交实验设计。
+第六步已完成：固定并发 8 和 mns8，在当前 Pod/GPU 的相邻时间窗口完成 `256/128` 校准、`1024/128` Prefill 对照、`256/256` Decode 对照和 `1024/256` 组合长上下文。四组共 840/840 个正式请求成功，三种长负载全部通过预注册的 P95 Long SLO；原始数据、聚合和 README 当前等待项目本人检查提交。
+
+第七步正在进行：最终 Pod 与日志审计已通过；待项目本人检查并提交四组结果后，从已提交的并发扫描、mns 参数实验和四场景数据生成可复现性能图表。完成图表后 Phase 2 才进入收尾。
 
 后续顺序保持为：完成 Phase 2 的 Long Context 和性能图表；完成 Phase 3 的 Grafana Dashboard、统一时间线和已有故障证据整理；最后才进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
 
@@ -844,6 +875,7 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 - 在 Kubernetes 1.28 双节点 GPU 集群上，以固定 vLLM 0.9.1 镜像部署 Qwen3-8B BF16 单卡服务，配置模型只读挂载、GPU 资源声明和三类健康探针，并验证 Pod 删除后的自动恢复。
 - 将 vLLM `/metrics` 通过 ServiceMonitor 接入既有 Prometheus，验证 target 存活和真实请求指标持续入库。
 - 构建固定 Token 长度、预热、三轮重复、种子隔离和 JSON/CSV 汇总的可复现压测流程；在单张 A10、256/128 Token 场景下，将 `max-num-seqs` 从 8 提高到 16，使 c16 输出吞吐从 179.29 提高到 305.43 tok/s、P95 E2E 从 11.10 秒降到 6.15 秒，同时识别出 TTFT/E2E 仍未满足 SLO 的边界。各档均为 300/300 请求成功。
+- 在同卡相邻窗口用 256/128、1024/128、256/256、1024/256 四组控制变量实验拆分 Prefill 与 Decode：Prompt 增长使 P95 TTFT 上升约 201%，输出翻倍使 P95 E2E 增加约 5.10 秒而 P95 TPOT 基本不变；组合场景 180/180 成功并通过预注册 P95 Long SLO，但 E2E 仅剩约 211 ms 余量。
 
 并发扫描和 mns16 参数实验的原始数据与报告均已提交，可作为已固化的远端证据；面试前仍应从原始 JSON 独立复算一次。
 
@@ -852,7 +884,7 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 - 不能声称已经完成 HPA、自定义指标弹性或多副本路由。
 - 不能声称已经找到全局最优参数或单卡饱和点。
 - 不能把 vLLM 自带 Continuous Batching、KV Cache 说成自己实现。
-- 不能把当前结果推广到其他模型、长上下文、量化模型或其他 GPU。
+- 不能把当前 1024/256 结果推广到更长上下文、其他模型、量化模型或其他 GPU。
 - 不能声称完成整卡与 HAMi/vGPU 对比。
 - 不能为了故事连贯而倒填项目时间；项目日期必须与真实实施时间一致。
 
