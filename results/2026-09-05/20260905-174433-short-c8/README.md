@@ -95,7 +95,7 @@ Qwen3-8B BF16 配置为 36 层、8 个 KV heads、head dimension 128。每个 To
 = 144 KiB/token
 ```
 
-从指标最小步长约 `1/1427`、CUDA 默认 16 tokens/block 推算，本实例约有 1427 个 GPU KV blocks，即约 22832 个 Token slot、约 3.14 GiB KV Cache。这是基于配置与运行指标的估算，不替代启动日志中的直接容量数据。
+从指标最小步长约 `1/1427`、CUDA 默认 16 tokens/block 推算，本实例约有 1427 个 GPU KV blocks，即约 22832 个 Token slot、约 3.14 GiB KV Cache。后续 mns16 新 Pod 的启动日志直接报告 `1427 blocks`、`22,832 tokens` 和 `3.14 GiB`，验证了这项反推；`max-num-seqs` 不改变由相同显存预算分配的 KV Cache 总容量。
 
 c8 捕获到的 13.52%约对应 193 blocks、3088 Token slot、0.424 GiB，与 `8 × (256+128)=3072` 个活跃 Token 加 block 对齐/少量缓存残留相符。当前短请求距离 KV Cache 容量边界很远；在 `max-num-seqs=8` 不变时，c16 的额外请求预计主要等待，KV Cache 峰值未必显著高于 c8。
 

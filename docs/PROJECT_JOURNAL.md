@@ -124,13 +124,13 @@ GitHub 的提示“does not provide shell access”是正常现象，表示 SSH 
 
 曾遇到 `.git/config: Permission denied`，原因是此前用 `sudo` 造成仓库文件所有权不一致。修复所有权后，以普通用户执行 Git 操作。后续不要用 `sudo git ...`。
 
-截至 `max-num-seqs=16` Deployment 修改前，远端最新提交为：
+截至 `max-num-seqs=16` 部署验收时，远端最新提交为：
 
 ```text
-d9e4a0e bench: prepare max-num-seqs parameter experiment
+842b5af deploy: raise max-num-seqs to 16 for benchmark
 ```
 
-并发 16 原始结果和参数实验事前假设均已推送；当前正在把版本化 Deployment 的 `max-num-seqs` 从 8 改为 16，尚未应用到集群。
+并发 16 原始结果和参数实验事前假设均已推送；`max-num-seqs=16` 已应用并完成新 Pod 验收，当前等待实验前 Git 检查点。
 
 ### 3.2 Kubernetes 集群
 
@@ -272,7 +272,7 @@ vLLM Pod /metrics
 - 镜像固定为 `vllm/vllm-openai:v0.9.1`，不使用 `latest`。
 - 显式传入 `--model /models/Qwen3-8B` 和 `--served-model-name Qwen3-8B`。
 - 并发扫描基线使用 `--max-model-len 4096`、`--max-num-seqs 8`、`--gpu-memory-utilization 0.85`。
-- `max-num-seqs` 参数实验只把版本化清单中的该值改为 16；提交并 apply 后才会成为集群实际配置。
+- `max-num-seqs` 参数实验只把该值改为 16；当前已应用并由新 Pod 启动日志确认生效。
 - CPU request/limit 为 2/4 核，内存 request/limit 为 16/32 GiB，GPU 为 1 张。
 - 模型目录只读挂载；`/dev/shm` 和 cache 使用 Pod 临时目录。
 - startup probe 最多容许约 10 分钟加载模型；readiness 控制流量；liveness 检测失去响应的进程。
@@ -495,7 +495,7 @@ Decode 累积增量 ≈ 127 × 0.67 ≈ 85 ms
 - 正式阶段主要看到 running=8、waiting=0；尾批 running 降到 4、1 属于请求逐步完成。
 - KV Cache 峰值约 13.52%，GPU-Util 约 97%，功耗约 149–150 W，最高温度约 71°C。
 
-吞吐尚未进入平台期，因此 c8 还不能判定为容量饱和点。基于 Qwen3-8B BF16 配置、16 tokens/block 和指标步长估算，本实例约有 1427 个 GPU KV blocks，即约 22832 Token slot、3.14 GiB KV Cache；c8 峰值约使用 193 blocks、3088 Token slot、0.424 GiB。该容量来自配置和指标反推，后续若能取得启动日志中的 block 数，应以直接记录交叉验证。
+吞吐尚未进入平台期，因此 c8 还不能判定为容量饱和点。基于 Qwen3-8B BF16 配置、16 tokens/block 和指标步长曾反推本实例约有 1427 个 GPU KV blocks，即约 22832 Token slot、3.14 GiB KV Cache；c8 峰值约使用 193 blocks、3088 Token slot、0.424 GiB。后续 mns16 新 Pod 的启动日志直接报告 `1427 blocks`、`22,832 tokens` 和 `3.14 GiB`，验证了这项反推。
 
 ### 7.6 并发 8 → 16
 
@@ -588,6 +588,8 @@ Short SLO v1 从 c16 起正式生效：请求成功率 ≥99%、P95 TTFT ≤600 
 12. 用户检查并提交 c16 事前假设为 `fc55fea`；随后由 Agent 建立 tmux、启动 c16 并监督三轮正式实验，稳定观察到 `running=8、waiting=8`、KV Cache 约 13.52%，300/300 请求成功。
 13. c16 数据显示吞吐较 c8 仅增加 0.27%，但 P95 TTFT 和 P95 E2E 分别增至约 6.02 秒、11.10 秒；用户检查并提交结果为 `9cd6718`。
 14. 为参数实验补充服务端引擎参数 metadata 和 `mns` 目录标识，记录用户事前回答与校正假设；用户检查并提交为 `d9e4a0e`。
+15. 用户完成 mns16 Deployment 的 client/server dry-run，提交并推送为 `842b5af`，随后正式 apply。新 Pod `qwen3-8b-77cf6cb556-76wbm` Ready、0 次重启，Endpoint 为 `10.244.64.213:8000`；启动参数确认 `max_num_seqs=16`，GPU UUID 与基线一致。
+16. mns16 启动日志直接报告可用 KV Cache `3.14 GiB`、`22,832 tokens`、`1427 blocks`，与此前基于指标步长的估算完全一致；模型加载、torch.compile、CUDA Graph 和 API Server 启动均成功，未发现 OOM/CUDA 错误。
 
 ### 8.5 关键 Git 里程碑
 
@@ -608,8 +610,9 @@ Short SLO v1 从 c16 起正式生效：请求成功率 ≥99%、P95 TTFT ≤600 
 | `fc55fea` | 记录并发 16 事前假设 | 在 c16 实验前冻结排队、吞吐、延迟和 KV Cache 判断 |
 | `9cd6718` | 增加并发 16 饱和基线 | 固化当前 `max-num-seqs=8` 下的吞吐平台与排队代价 |
 | `d9e4a0e` | 准备 `max-num-seqs` 参数实验 | 记录服务端参数、实验标识和事前假设 |
+| `842b5af` | 将 `max-num-seqs` 提高到 16 | 固化参数实验 Deployment 配置 |
 
-以上条目均已提交到 `origin/main`。当前待检查并提交 Deployment 的 mns16 配置变更。
+以上条目均已提交到 `origin/main`。当前待提交 mns16 部署验收记录，再启动正式实验。
 
 ## 9. 已遇到的故障与面试价值
 
@@ -764,9 +767,9 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 
 第二步已完成：项目本人回答了 11.5 的五个问题，校正后的吞吐、延迟、waiting 和 KV Cache 假设已经冻结。
 
-第三步正在进行：版本化 Deployment 已把 `--max-num-seqs` 从 `8` 改为 `16`。由项目本人执行 client/server dry-run、检查 diff 并提交配置，再正式 apply。Deployment 使用 Recreate，应用后旧 Pod 会退出并重新加载模型，期间服务暂时不可用。
+第三步已完成：版本化 Deployment 已把 `--max-num-seqs` 从 `8` 改为 `16`，用户完成 dry-run、提交、apply 和新 Pod 验收；启动日志同时给出了精确 KV Cache 容量。
 
-第四步，等待新 Pod Ready 后重新核对 Pod args、Endpoint、GPU UUID 和共享负载，再建立端口转发并运行 `c16-mns16` 三轮实验。实验完成后是否保留 mns16 作为部署默认值，要依据 SLO 和吞吐实测决定，不能因为 KV Cache 有余量就提前决定。
+第四步正在进行：先提交部署验收记录，再建立端口转发并运行 `c16-mns16` 三轮实验。实验完成后是否保留 mns16 作为部署默认值，要依据 SLO 和吞吐实测决定，不能因为 KV Cache 有余量就提前决定。
 
 事前容量估算是：若 16 条短请求同时运行，KV Cache 峰值可能约为当前的两倍，即约 27%，仍低于容量边界；但吞吐不会因此必然翻倍，TPOT 还可能因批次更宽而上升。完成参数实验后，再进入长输入场景，避免同时改变请求长度和服务端参数。
 

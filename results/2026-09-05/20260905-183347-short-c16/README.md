@@ -78,7 +78,7 @@ TPOT 主要衡量请求进入生成阶段后的逐 Token 间隔，不包含调�
 
 c16 的 KV Cache 峰值仍约 13.52%，与 c8 基本一致。原因是使用 GPU KV Cache 的主要是 8 条 running 序列，而不是客户端全部 16 个未完成请求。waiting=8 证明调度并发受限，但不意味着 KV Cache 使用量翻倍。
 
-按 c8 报告中的估算，当前实例约有 1427 个 GPU KV blocks、22832 个 Token slot、约 3.14 GiB KV Cache。13.52%约对应 193 blocks、3088 Token slot、0.424 GiB。它说明短请求实验远未达到 KV Cache 容量边界，但不能据此选择一个已经违反延迟 SLO 的客户端并发。
+当前实例约有 1427 个 GPU KV blocks、22832 个 Token slot、约 3.14 GiB KV Cache；这些最初由 c8 指标反推，后续 mns16 新 Pod 的启动日志直接报告相同数值并完成验证。13.52%约对应 193 blocks、3088 Token slot、0.424 GiB。它说明短请求实验远未达到 KV Cache 容量边界，但不能据此选择一个已经违反延迟 SLO 的客户端并发。
 
 ## 算术一致性
 
