@@ -49,8 +49,9 @@ spec:
             - bfloat16
             - --max-model-len
             - "4096"
+            # 参数实验：从基线值 8 提高到 16，验证更宽批次的吞吐与延迟代价。
             - --max-num-seqs
-            - "8"
+            - "16"
             - --gpu-memory-utilization
             - "0.85"
           env:

@@ -124,13 +124,13 @@ GitHub 的提示“does not provide shell access”是正常现象，表示 SSH 
 
 曾遇到 `.git/config: Permission denied`，原因是此前用 `sudo` 造成仓库文件所有权不一致。修复所有权后，以普通用户执行 Git 操作。后续不要用 `sudo git ...`。
 
-截至 `max-num-seqs` 参数实验准备前，远端最新提交为：
+截至 `max-num-seqs=16` Deployment 修改前，远端最新提交为：
 
 ```text
-9cd6718 data: add concurrency-16 saturation baseline
+d9e4a0e bench: prepare max-num-seqs parameter experiment
 ```
 
-并发 16 原始结果、报告和复盘均已推送；当前开始准备 `max-num-seqs=8→16` 控制变量实验。
+并发 16 原始结果和参数实验事前假设均已推送；当前正在把版本化 Deployment 的 `max-num-seqs` 从 8 改为 16，尚未应用到集群。
 
 ### 3.2 Kubernetes 集群
 
@@ -271,7 +271,8 @@ vLLM Pod /metrics
 - `nodeSelector: qhvgpu1`：模型目前只存在该节点的本地目录。
 - 镜像固定为 `vllm/vllm-openai:v0.9.1`，不使用 `latest`。
 - 显式传入 `--model /models/Qwen3-8B` 和 `--served-model-name Qwen3-8B`。
-- `--max-model-len 4096`、`--max-num-seqs 8`、`--gpu-memory-utilization 0.85`。
+- 并发扫描基线使用 `--max-model-len 4096`、`--max-num-seqs 8`、`--gpu-memory-utilization 0.85`。
+- `max-num-seqs` 参数实验只把版本化清单中的该值改为 16；提交并 apply 后才会成为集群实际配置。
 - CPU request/limit 为 2/4 核，内存 request/limit 为 16/32 GiB，GPU 为 1 张。
 - 模型目录只读挂载；`/dev/shm` 和 cache 使用 Pod 临时目录。
 - startup probe 最多容许约 10 分钟加载模型；readiness 控制流量；liveness 检测失去响应的进程。
@@ -585,7 +586,8 @@ Short SLO v1 从 c16 起正式生效：请求成功率 ≥99%、P95 TTFT ≤600 
 10. c8 首次由 Agent 启动时未激活虚拟环境 PATH，runner 误用系统 vLLM，参数校验失败且没有发出请求；清理仅含 metadata 的无效目录后，使用 vLLM 0.9.1 客户端重新启动。
 11. 完成并发 8 三轮实验，300/300 请求成功；Agent 监督 running/waiting、KV Cache 和 GPU 状态并生成汇总，用户检查后提交为 `000f8c3`。
 12. 用户检查并提交 c16 事前假设为 `fc55fea`；随后由 Agent 建立 tmux、启动 c16 并监督三轮正式实验，稳定观察到 `running=8、waiting=8`、KV Cache 约 13.52%，300/300 请求成功。
-13. c16 数据显示吞吐较 c8 仅增加 0.27%，但 P95 TTFT 和 P95 E2E 分别增至约 6.02 秒、11.10 秒；报告已经生成，等待用户检查和提交。
+13. c16 数据显示吞吐较 c8 仅增加 0.27%，但 P95 TTFT 和 P95 E2E 分别增至约 6.02 秒、11.10 秒；用户检查并提交结果为 `9cd6718`。
+14. 为参数实验补充服务端引擎参数 metadata 和 `mns` 目录标识，记录用户事前回答与校正假设；用户检查并提交为 `d9e4a0e`。
 
 ### 8.5 关键 Git 里程碑
 
@@ -605,8 +607,9 @@ Short SLO v1 从 c16 起正式生效：请求成功率 ≥99%、P95 TTFT ≤600 
 | `000f8c3` | 增加并发 8 基线和 SLO v1 | 固化 c8 数据并为 c16 建立前瞻性延迟标准 |
 | `fc55fea` | 记录并发 16 事前假设 | 在 c16 实验前冻结排队、吞吐、延迟和 KV Cache 判断 |
 | `9cd6718` | 增加并发 16 饱和基线 | 固化当前 `max-num-seqs=8` 下的吞吐平台与排队代价 |
+| `d9e4a0e` | 准备 `max-num-seqs` 参数实验 | 记录服务端参数、实验标识和事前假设 |
 
-以上条目均已提交到 `origin/main`。当前工作进入 `max-num-seqs` 参数实验准备阶段。
+以上条目均已提交到 `origin/main`。当前待检查并提交 Deployment 的 mns16 配置变更。
 
 ## 9. 已遇到的故障与面试价值
 
@@ -757,11 +760,11 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 
 ### 12.2 紧接着要做什么
 
-第一步，补全参数实验的可复现记录：benchmark runner 必须把 `max-num-seqs`、`max-model-len` 和 `gpu-memory-utilization` 写入 metadata，并在实验目录名中标识 `mns16`。由项目本人检查并提交该工具改动及事前假设。
+第一步已完成：benchmark runner 会把 `max-num-seqs`、`max-model-len` 和 `gpu-memory-utilization` 写入 metadata，并在实验目录名中标识 `mns16`；工具改动和事前假设已提交为 `d9e4a0e`。
 
-第二步，在修改集群前回答 11.5 的五个问题，冻结对吞吐、延迟、waiting 和 KV Cache 的预测。只改变 `max-num-seqs`，其他服务端与负载变量保持不变。
+第二步已完成：项目本人回答了 11.5 的五个问题，校正后的吞吐、延迟、waiting 和 KV Cache 假设已经冻结。
 
-第三步，由项目本人先把 `deploy/kubernetes/deployment.yaml` 中 `--max-num-seqs` 从 `8` 改为 `16`，执行 client/server dry-run、检查 diff 并提交配置，再正式 apply。Deployment 使用 Recreate，应用后旧 Pod 会退出并重新加载模型，期间服务暂时不可用。
+第三步正在进行：版本化 Deployment 已把 `--max-num-seqs` 从 `8` 改为 `16`。由项目本人执行 client/server dry-run、检查 diff 并提交配置，再正式 apply。Deployment 使用 Recreate，应用后旧 Pod 会退出并重新加载模型，期间服务暂时不可用。
 
 第四步，等待新 Pod Ready 后重新核对 Pod args、Endpoint、GPU UUID 和共享负载，再建立端口转发并运行 `c16-mns16` 三轮实验。实验完成后是否保留 mns16 作为部署默认值，要依据 SLO 和吞吐实测决定，不能因为 KV Cache 有余量就提前决定。
 
