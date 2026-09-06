@@ -134,13 +134,13 @@ GitHub 的提示“does not provide shell access”是正常现象，表示 SSH 
 
 曾遇到 `.git/config: Permission denied`，原因是此前用 `sudo` 造成仓库文件所有权不一致。修复所有权后，以普通用户执行 Git 操作。后续不要用 `sudo git ...`。
 
-截至恢复单副本 mns8 基线前，远端最新提交为：
+截至单副本 mns8 回退验收完成时，远端最新提交为：
 
 ```text
-5776be0 data: add max-num-seqs 16 benchmark
+cac1a7a deploy: restore single-replica mns8 baseline
 ```
 
-`c16-mns16` 三轮正式结果、报告和复盘均已推送；当前版本化 Deployment 正在恢复 mns8，集群在项目本人 apply 前仍运行 mns16。
+`c16-mns16` 三轮正式结果、报告和复盘均已推送；版本化 Deployment 和集群均已恢复单副本 mns8，启动与资源归属验收通过。
 
 ### 3.2 Kubernetes 集群
 
@@ -621,6 +621,8 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 17. 用户提交 mns16 部署验收记录为 `ca85714`；Agent 随后建立端口转发并执行 `c16-mns16` 三轮正式实验，300/300 请求成功，稳定观察到 `running=16、waiting=0`，KV Cache 采样峰值约 24.18%。
 18. mns16 将输出吞吐提高到 305.43 tok/s，但 P95 TTFT 976.84 ms、P95 E2E 6.152 s 仍违反 SLO；用户据此选择每副本限制约 8 并发、以两个副本分担总并发 16 作为后续架构方向。
 19. 用户检查并提交 mns16 原始结果和报告为 `5776be0`；随后重新确认项目仍处于 Phase 2，决定先恢复单副本 mns8、完成长输入与可观测性交付，再进入最多两副本的 Phase 4。
+20. 用户提交恢复清单和共享环境安全边界为 `cac1a7a` 并正式 apply；新 Pod `qwen3-8b-8fc88c5c9-5bmsd` Ready、0 次重启，Endpoint 指向 `10.244.64.214:8000`，启动参数确认 `max_num_seqs=8`，KV Cache 容量仍为 3.14 GiB、22,832 tokens、1427 blocks。
+21. 新 Pod 被 Device Plugin 分配到宿主机物理 GPU 1（`GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116`），不再是历史基线使用的物理 GPU 3。只读审计确认 GPU 0 上的公司 Qwen3-TTS 进程占用约 5.9 GiB，GPU 1 上本项目 vLLM 占用约 19.8 GiB，两者没有重叠；同时 `default/magic-pdf-gpu-api` 仍声明一张整卡，因此不能把其余空闲卡直接认定为可用于个人项目。
 
 ### 8.5 关键 Git 里程碑
 
@@ -644,8 +646,9 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 | `842b5af` | 将 `max-num-seqs` 提高到 16 | 固化参数实验 Deployment 配置 |
 | `ca85714` | 记录 mns16 部署验收 | 固化精确 KV Cache 容量和新 Pod 启动证据 |
 | `5776be0` | 增加 mns16 参数实验结果 | 固化 70.36%吞吐收益和仍未通过 TTFT/E2E SLO 的边界 |
+| `cac1a7a` | 恢复单副本 mns8 基线 | 固化 Phase 0–3 单卡默认值和最多两卡的共享环境安全边界 |
 
-以上条目均已提交到 `origin/main`。当前待检查并提交恢复 mns8 的清单和安全边界。
+以上条目均已提交到 `origin/main`。当前本地开始准备 Phase 2 的 Prefill/Decode 单变量实验设计。
 
 ## 9. 已遇到的故障与面试价值
 
@@ -791,6 +794,19 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 3. PagedAttention 支持按 block 动态分配并降低连续显存要求，但不能把 24.18%低于理论 26.91%完全归因于它。更直接的原因是序列进度不同以及 3 秒采样没有捕获瞬时上界。
 4. 两副本方案是正确的容量扩展方向，但目前只是计划。需要验证第二张 GPU、模型可访问性、每副本 mns8、负载均衡以及总并发 16 时每个副本是否各承接约 8 请求。
 
+### 11.7 Prefill / Decode 单变量实验前（已完成）
+
+实验执行者原始回答：输入从 256 增至 1024、输出保持 128 时，预计输出吞吐下降、TTFT 下降、TPOT 不变，因为输入 Token 变多；输出从 128 增至 256 时，预计 TPOT 不会明显变化，E2E 增加约一倍 TPOT 时间；KV Cache 实测低于理论上界，是因为采样未捕获峰值且序列进度不同；长上下文应该单独定义 SLO。
+
+校正后的事前假设：
+
+1. `256/128 → 1024/128`只增加 Prompt。输出吞吐可能下降，因为更多 GPU 时间用于 Prefill；P95 TTFT 应上升而不是下降，因为首 Token 前必须处理更多输入；进入稳定 Decode 后，P95 TPOT 预计接近基线或仅小幅上升。
+2. `256/128 → 256/256`只增加输出。TPOT 是相邻输出 Token 的时间，预计不会因为输出长度翻倍而自身翻倍；E2E 增量近似为新增 128 个输出 Token 乘以 TPOT。按 Short c8 的约 40 ms/token 粗估，P95 E2E 可能增加约 `128 × 40 ms ≈ 5.1 s`。
+3. 以 22,832 Token slot 为分母、8 条序列都同时达到最大长度作为理论上界，`1024/128`、`256/256`、`1024/256` 的 KV Cache 分别约为 40.4%、17.9%、44.9%。实测可能更低，因为请求不会完全同步达到最长状态，三秒级采样也可能错过瞬时峰值；低于上界本身不代表性能未到峰值。
+4. Long SLO v1 定义为：成功率 ≥99%、P95 TTFT ≤1500 ms、P95 TPOT ≤55 ms、P95 E2E ≤13 s。它是缺少真实业务需求时的项目工程验收线：TTFT 相对 Short 的 600 ms 放宽以容纳 4 倍 Prompt，E2E 相对 6 s 放宽以容纳 2 倍输出，TPOT 只小幅放宽，因为输出变长不应使逐 Token 节奏成倍恶化。
+
+上述阈值在实验前冻结；实验后无论通过或失败都不回改阈值，只解释证据与适用范围。
+
 ## 12. 当前阶段与下一步
 
 ### 12.1 阶段状态
@@ -799,7 +815,7 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 | --- | --- | --- | --- |
 | Phase 0 环境与安全边界 | 已完成 | 软硬件、模型、共享工作负载、Git 认证盘点 | 每次实验前刷新动态资源快照 |
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
-| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16 对照 | 恢复 mns8，执行长输入、Prefill/Decode 对照和结果图表 |
+| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16 对照、恢复 mns8 | 执行长输入、Prefill/Decode 对照和结果图表 |
 | Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 查询 | Grafana Dashboard、统一时间线、故障场景 |
 | Phase 4 多副本与弹性 | 计划中 | 架构和指标方向 | 第二张可用 GPU、共享模型、Adapter/KEDA、HPA 与突发流量实验 |
 
@@ -815,7 +831,9 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 
 第四步已完成：`c16-mns16` 三轮均为 100/100 成功，输出吞吐较 mns8 提高 70.36%，但 P95 TTFT 和 P95 E2E 仍违反 SLO。
 
-第五步正在进行：mns16 结果已提交为 `5776be0`，版本化 Deployment 正在恢复单副本 mns8。项目本人完成 dry-run、提交、apply 和 Pod 验收后，再开始长输入实验。
+第五步已完成：mns16 结果已提交为 `5776be0`；版本化 Deployment 和集群均已恢复单副本 mns8。回退后的 Pod 健康，但被重新分配到物理 GPU 1，因此历史 GPU 3 上的 Short 数据不能直接充当严格的当前硬件对照。
+
+第六步正在进行：固定并发 8 和 mns8，在当前 Pod/GPU 的相邻时间窗口依次执行 `256/128` 校准、`1024/128` Prefill 对照、`256/256` Decode 对照和 `1024/256` 组合长上下文。新增场景使用独立种子；正式执行前先冻结预期，再由项目本人审核并提交实验设计。
 
 后续顺序保持为：完成 Phase 2 的 Long Context 和性能图表；完成 Phase 3 的 Grafana Dashboard、统一时间线和已有故障证据整理；最后才进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
 

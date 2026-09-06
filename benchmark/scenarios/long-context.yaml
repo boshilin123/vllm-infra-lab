@@ -1,8 +1,9 @@
 name: long-context
-description: Longer prompt workload for prefill and KV cache analysis.
+description: Combined longer prompt and output workload for KV cache and E2E analysis.
 prompt_tokens: 1024
 output_tokens: 256
-concurrency: [1, 2, 4, 8]
+concurrency: [8]
 warmup_requests: 10
 measured_requests: 60
 repeats: 3
+seed_offset: 300000

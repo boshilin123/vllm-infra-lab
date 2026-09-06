@@ -98,6 +98,9 @@ def load_scenario(path: Path, concurrency: int) -> dict[str, Any]:
     for key in ("prompt_tokens", "output_tokens", "warmup_requests", "measured_requests", "repeats"):
         if not isinstance(scenario[key], int) or scenario[key] <= 0:
             raise ValueError(f"{key} 必须是正整数")
+    seed_offset = scenario.get("seed_offset", 0)
+    if not isinstance(seed_offset, int) or isinstance(seed_offset, bool) or seed_offset < 0:
+        raise ValueError("seed_offset 必须是非负整数")
     return scenario
 
 
@@ -215,9 +218,11 @@ def main() -> int:
     if not 0 < args.server_gpu_memory_utilization <= 1:
         raise ValueError("server-gpu-memory-utilization 必须在 (0, 1] 范围内")
 
-    # 每个并发档位和重复轮次使用不同但固定的种子，避免跨实验命中旧的 Prefix Cache。
+    # 每个场景、并发档位和重复轮次使用不同但固定的种子，避免跨实验命中旧的 Prefix Cache。
     # 减 1 使并发 1 继续使用已经建立基线时的 42/43/44 与 10001/10002/10003。
     concurrency_seed_offset = (args.concurrency - 1) * 1_000
+    scenario_seed_offset = scenario.get("seed_offset", 0)
+    seed_offset = concurrency_seed_offset + scenario_seed_offset
     commands: list[tuple[str, list[str]]] = []
     timestamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
     experiment_id = (
@@ -227,8 +232,8 @@ def main() -> int:
     result_dir = REPO_ROOT / "results" / datetime.now().strftime("%Y-%m-%d") / experiment_id
 
     for repeat in range(1, scenario["repeats"] + 1):
-        warmup_seed = 10_000 + concurrency_seed_offset + repeat
-        measured_seed = 42 + concurrency_seed_offset + repeat - 1
+        warmup_seed = 10_000 + seed_offset + repeat
+        measured_seed = 42 + seed_offset + repeat - 1
         warmup = benchmark_command(
             vllm=vllm,
             base_url=args.base_url,
@@ -289,7 +294,8 @@ def main() -> int:
         "scenario": scenario,
         "selected_concurrency": args.concurrency,
         "seed_policy": (
-            "offset=(concurrency-1)*1000; "
+            f"scenario_offset={scenario_seed_offset}; "
+            "offset=scenario_offset+(concurrency-1)*1000; "
             "warmup=10000+offset+repeat; measured=42+offset+repeat-1"
         ),
     }

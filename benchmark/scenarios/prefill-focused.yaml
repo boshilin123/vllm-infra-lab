@@ -1,0 +1,9 @@
+name: prefill-focused
+description: Increase only prompt length relative to short for Prefill and TTFT analysis.
+prompt_tokens: 1024
+output_tokens: 128
+concurrency: [8]
+warmup_requests: 10
+measured_requests: 60
+repeats: 3
+seed_offset: 100000

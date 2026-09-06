@@ -1,0 +1,9 @@
+name: decode-focused
+description: Increase only output length relative to short for Decode and TPOT analysis.
+prompt_tokens: 256
+output_tokens: 256
+concurrency: [8]
+warmup_requests: 10
+measured_requests: 60
+repeats: 3
+seed_offset: 200000
