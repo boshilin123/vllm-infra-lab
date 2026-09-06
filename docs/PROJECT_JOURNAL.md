@@ -100,6 +100,16 @@ HAMi 可以作为个人项目的可选扩展实验，但不进入标题和当前
 
 以后仍应保留这种“先提问、再作答、最后校正”的方式。
 
+### 2.3 共享公司环境的硬安全边界
+
+- 本个人项目在任何时刻最多使用两张 GPU，Phase 0–3 默认只使用当前单张实验 GPU。
+- 不停止、迁移或修改任何公司已有服务；写操作限定在本项目仓库和 `vllm-infra-lab` namespace。
+- 已知 GPU 0 上存在公司 Qwen3-TTS 进程，绝不停止或抢占。第二副本不能仅凭“其他卡看起来空闲”就启动，必须先确认 Kubernetes 的设备分配不会落到该卡。
+- Phase 4 最多使用两个副本、两张 GPU，`maxReplicas` 不得超过 2；只在短时受控实验窗口运行，结束后恢复单副本。
+- 如果无法用受支持的调度/隔离方式保证第二张 GPU 安全，则停止双副本实施，把它如实记录为共享环境约束，不用冒险换取项目结果。
+
+资源上限是安全边界，不是必须把两张卡都用满的目标。项目仍以可复现的 vLLM Serving 性能、可观测性与弹性证据为主线。
+
 ## 3. 青海环境事实清单
 
 ### 3.1 代码与 Git
@@ -124,13 +134,13 @@ GitHub 的提示“does not provide shell access”是正常现象，表示 SSH 
 
 曾遇到 `.git/config: Permission denied`，原因是此前用 `sudo` 造成仓库文件所有权不一致。修复所有权后，以普通用户执行 Git 操作。后续不要用 `sudo git ...`。
 
-截至 `c16-mns16` 正式结果整理时，远端最新提交为：
+截至恢复单副本 mns8 基线前，远端最新提交为：
 
 ```text
-ca85714 docs: record max-num-seqs 16 deployment validation
+5776be0 data: add max-num-seqs 16 benchmark
 ```
 
-`max-num-seqs=16` 已应用并完成新 Pod 验收；`c16-mns16` 三轮正式结果和报告已生成，当前等待项目本人检查和提交。
+`c16-mns16` 三轮正式结果、报告和复盘均已推送；当前版本化 Deployment 正在恢复 mns8，集群在项目本人 apply 前仍运行 mns16。
 
 ### 3.2 Kubernetes 集群
 
@@ -610,6 +620,7 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 16. mns16 启动日志直接报告可用 KV Cache `3.14 GiB`、`22,832 tokens`、`1427 blocks`，与此前基于指标步长的估算完全一致；模型加载、torch.compile、CUDA Graph 和 API Server 启动均成功，未发现 OOM/CUDA 错误。
 17. 用户提交 mns16 部署验收记录为 `ca85714`；Agent 随后建立端口转发并执行 `c16-mns16` 三轮正式实验，300/300 请求成功，稳定观察到 `running=16、waiting=0`，KV Cache 采样峰值约 24.18%。
 18. mns16 将输出吞吐提高到 305.43 tok/s，但 P95 TTFT 976.84 ms、P95 E2E 6.152 s 仍违反 SLO；用户据此选择每副本限制约 8 并发、以两个副本分担总并发 16 作为后续架构方向。
+19. 用户检查并提交 mns16 原始结果和报告为 `5776be0`；随后重新确认项目仍处于 Phase 2，决定先恢复单副本 mns8、完成长输入与可观测性交付，再进入最多两副本的 Phase 4。
 
 ### 8.5 关键 Git 里程碑
 
@@ -632,8 +643,9 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 | `d9e4a0e` | 准备 `max-num-seqs` 参数实验 | 记录服务端参数、实验标识和事前假设 |
 | `842b5af` | 将 `max-num-seqs` 提高到 16 | 固化参数实验 Deployment 配置 |
 | `ca85714` | 记录 mns16 部署验收 | 固化精确 KV Cache 容量和新 Pod 启动证据 |
+| `5776be0` | 增加 mns16 参数实验结果 | 固化 70.36%吞吐收益和仍未通过 TTFT/E2E SLO 的边界 |
 
-以上条目均已提交到 `origin/main`。`c16-mns16` 正式结果和报告当前待提交。
+以上条目均已提交到 `origin/main`。当前待检查并提交恢复 mns8 的清单和安全边界。
 
 ## 9. 已遇到的故障与面试价值
 
@@ -787,7 +799,7 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 | --- | --- | --- | --- |
 | Phase 0 环境与安全边界 | 已完成 | 软硬件、模型、共享工作负载、Git 认证盘点 | 每次实验前刷新动态资源快照 |
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
-| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16 对照 | 提交 mns16 结果，执行长输入等参数实验 |
+| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16 对照 | 恢复 mns8，执行长输入、Prefill/Decode 对照和结果图表 |
 | Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 查询 | Grafana Dashboard、统一时间线、故障场景 |
 | Phase 4 多副本与弹性 | 计划中 | 架构和指标方向 | 第二张可用 GPU、共享模型、Adapter/KEDA、HPA 与突发流量实验 |
 
@@ -803,7 +815,9 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 
 第四步已完成：`c16-mns16` 三轮均为 100/100 成功，输出吞吐较 mns8 提高 70.36%，但 P95 TTFT 和 P95 E2E 仍违反 SLO。
 
-紧接着由项目本人检查并提交 mns16 原始结果和报告。随后先把单副本 Deployment 恢复为 mns8 基线，再进入多副本设计检查：确认第二张空闲 GPU、模型挂载、每副本指标标签和负载均衡方式。多副本实验前必须冻结假设，不能把“两个副本承接 16 并发”提前写成已完成事实。
+第五步正在进行：mns16 结果已提交为 `5776be0`，版本化 Deployment 正在恢复单副本 mns8。项目本人完成 dry-run、提交、apply 和 Pod 验收后，再开始长输入实验。
+
+后续顺序保持为：完成 Phase 2 的 Long Context 和性能图表；完成 Phase 3 的 Grafana Dashboard、统一时间线和已有故障证据整理；最后才进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
 
 ## 13. 当前可用于面试的表述边界
 
@@ -813,7 +827,7 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 - 将 vLLM `/metrics` 通过 ServiceMonitor 接入既有 Prometheus，验证 target 存活和真实请求指标持续入库。
 - 构建固定 Token 长度、预热、三轮重复、种子隔离和 JSON/CSV 汇总的可复现压测流程；在单张 A10、256/128 Token 场景下，将 `max-num-seqs` 从 8 提高到 16，使 c16 输出吞吐从 179.29 提高到 305.43 tok/s、P95 E2E 从 11.10 秒降到 6.15 秒，同时识别出 TTFT/E2E 仍未满足 SLO 的边界。各档均为 300/300 请求成功。
 
-并发扫描的 c1–c16 原始数据和报告均已提交；mns16 参数结果当前待提交，提交后才可作为已固化的远端证据。面试前仍应从原始 JSON 独立复算一次。
+并发扫描和 mns16 参数实验的原始数据与报告均已提交，可作为已固化的远端证据；面试前仍应从原始 JSON 独立复算一次。
 
 ### 13.2 目前不能声称
 
