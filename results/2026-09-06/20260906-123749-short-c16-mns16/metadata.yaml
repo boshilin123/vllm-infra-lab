@@ -1,0 +1,34 @@
+experiment_id: 20260906-123749-short-c16-mns16
+created_at: '2026-09-06T12:37:49+08:00'
+git_commit: ca85714ea9957b12cdec28cd39be405c9f81e42a
+client_hostname: qhvgpu1
+client_python: /home/qhadmin/boshi/vllm/envs/vllm-qwen3/bin/python
+client_vllm_version: 0.9.1
+base_url: http://127.0.0.1:28080
+model: Qwen3-8B
+tokenizer: /home/qhadmin/boshi/vllm/models/Qwen3-8B
+server:
+  node: qhvgpu1
+  gpu_physical_index: 3
+  gpu_uuid: GPU-c9ee2ea8-993d-e7e2-7e3f-7a183b63d573
+  engine:
+    max_num_seqs: 16
+    max_model_len: 4096
+    gpu_memory_utilization: 0.85
+scenario_file: benchmark/scenarios/short.yaml
+scenario:
+  name: short
+  description: Short prompt and response workload for concurrency saturation tests.
+  prompt_tokens: 256
+  output_tokens: 128
+  concurrency:
+  - 1
+  - 2
+  - 4
+  - 8
+  - 16
+  warmup_requests: 10
+  measured_requests: 100
+  repeats: 3
+selected_concurrency: 16
+seed_policy: offset=(concurrency-1)*1000; warmup=10000+offset+repeat; measured=42+offset+repeat-1
