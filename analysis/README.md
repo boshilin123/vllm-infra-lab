@@ -28,6 +28,20 @@ python analysis/generate_charts.py
 
 - 扩缩容期间副本数、P95 和错误率时间线。
 
+## Phase 4 弹性策略离线回放
+
+`simulate_autoscaling.py`读取 Phase 3 已保存的 `timeline.csv`，按 `autoscaling-policy.json` 回放最多 1→2→1 的副本状态机。它不访问集群，先验证 waiting 去抖、155 秒冷启动和缩容防抖对历史突发的影响：
+
+```bash
+python analysis/simulate_autoscaling.py \
+  --timeline results/2026-09-07/20260907-104314-observability-burst-c16-mns8/monitoring/timeline.csv
+
+python analysis/generate_autoscaling_chart.py \
+  --simulation-dir results/2026-09-07/20260907-104314-observability-burst-c16-mns8/monitoring/autoscaling-simulation
+```
+
+策略细节、请求级 least-inflight 路由与容量控制环的职责边界见 `docs/PHASE4_POLICY.md`。
+
 ## Phase 3 统一时间线
 
 先用 `export_prometheus_timeline.py` 导出 Prometheus/DCGM 原始 matrix、统一 CSV、元数据和汇总，再生成确定性 SVG：

@@ -73,6 +73,8 @@ flowchart LR
 - 在单张 A10、Qwen3-8B BF16、256/128 Token、`max-num-seqs=8` 下，并发从 8 增至 16 时输出吞吐仅提高 0.27%，P95 TTFT 从 525 ms 恶化至 6.02 s，定位到服务端运行序列上限与排队拐点。
 - 固定客户端并发 16，将 `max-num-seqs` 从 8 提至 16 后，输出吞吐从 179.29 提高到 305.43 tok/s（+70.36%），P95 E2E 从 11.10 s 降到 6.15 s；但 TTFT/E2E 仍未通过预注册 Short SLO。
 - 同卡 Prefill/Decode 对照中，Prompt 从 256 增至 1024 使 P95 TTFT 上升约 201%；输出从 128 增至 256 使 P95 E2E 增加约 5.10 s，而 P95 TPOT 基本不变。
+- 双副本普通 Service 与确定性 8/8 对照的输出吞吐均约 333～335 tok/s，但后者将 P95 TTFT/E2E 从 5469/10742 ms降至 525/5544 ms，证明连接级瞬时分流会阻碍横向容量转化为 SLO 收益。
+- 用已保存的 15 秒时间线离线回放 waiting 弹性策略：连续两点触发后叠加 155 秒冷启动，第二副本计划 Ready 时间晚于最后负载采样约 20 秒，说明 `minReplicas=1` 的纯反应式扩容无法挽救该短突发。
 
 ![Short 并发扫描](analysis/generated/concurrency-scan.svg)
 
@@ -91,6 +93,7 @@ vllm-infra-lab/
 │   └── aggregate_results.py
 ├── monitoring/          # ServiceMonitor、PrometheusRule 与 Grafana Dashboard
 ├── analysis/            # 可复现性能图与后续时序指标关联
+├── tests/               # 离线策略等标准库单元测试
 ├── scripts/             # 部署、冒烟测试与环境元数据采集
 ├── results/             # 经脱敏的原始结果、汇总数据和图表
 └── docs/                # 架构、实验方法、Runbook 和性能报告

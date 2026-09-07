@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "scrape_interval_seconds": 15,
+  "min_replicas": 1,
+  "max_replicas": 2,
+  "scale_out": {
+    "waiting_greater_than": 0,
+    "consecutive_samples": 2,
+    "startup_delay_seconds": 155
+  },
+  "scale_in": {
+    "waiting_equals": 0,
+    "running_at_most": 4,
+    "low_load_seconds": 300,
+    "minimum_second_replica_ready_seconds": 300
+  }
+}

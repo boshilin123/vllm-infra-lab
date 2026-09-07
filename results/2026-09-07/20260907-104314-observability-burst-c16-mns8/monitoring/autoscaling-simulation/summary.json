@@ -1,0 +1,18 @@
+{
+  "capacity_overlapped_observed_load": false,
+  "conclusion": "second replica would become ready after the observed load ended",
+  "first_waiting_utc": "2026-09-07T02:43:44Z",
+  "last_observed_active_utc": "2026-09-07T02:46:44Z",
+  "max_running_requests": 8.0,
+  "max_waiting_requests": 8.0,
+  "policy_file": "analysis/autoscaling-policy.json",
+  "sample_count": 22,
+  "scale_in_requested_utc": null,
+  "scale_out_requested_utc": "2026-09-07T02:44:29Z",
+  "schema_version": 1,
+  "second_replica_ready_observed_utc": "2026-09-07T02:47:14Z",
+  "second_replica_scheduled_ready_utc": "2026-09-07T02:47:04Z",
+  "source_timeline": "results/2026-09-07/20260907-104314-observability-burst-c16-mns8/monitoring/timeline.csv",
+  "trace_end_utc": "2026-09-07T02:47:29Z",
+  "trace_start_utc": "2026-09-07T02:42:14Z"
+}
