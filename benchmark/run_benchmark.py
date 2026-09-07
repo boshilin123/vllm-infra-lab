@@ -105,6 +105,13 @@ def load_scenario(path: Path, concurrency: int) -> dict[str, Any]:
 
 
 def find_vllm() -> str:
+    # 通过虚拟环境 Python 启动 runner 时，优先使用同一 bin 目录中的 vLLM。
+    # 仅依赖 PATH 可能出现“Python 来自 venv、vLLM 却来自 /usr/local/bin”的混用。
+    # 不调用 resolve()：venv 的 python 通常是指向系统 Python 的符号链接，
+    # 解析后会错误回到 /usr/local/bin。
+    sibling = Path(sys.executable).parent / "vllm"
+    if sibling.is_file() and os.access(sibling, os.X_OK):
+        return str(sibling)
     executable = shutil.which("vllm")
     if executable is None:
         raise RuntimeError("找不到 vllm，请先激活 vllm-qwen3 虚拟环境")

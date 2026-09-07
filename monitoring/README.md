@@ -3,6 +3,9 @@
 本目录存放：
 
 - `servicemonitor.yaml`：让集群现有 Prometheus 每 15 秒抓取一次 vLLM 的 `/metrics`。
+- `prometheus_probe.py`：通过本地 Prometheus 端口转发只读发现真实指标名与标签。
+- `prometheus_queries.json`：时间线导出器与 Grafana 共用的 PromQL 单一事实来源。
+- `generate_dashboard.py` / `grafana-dashboard.json`：生成并保存可导入 Dashboard。
 - `kustomization.yaml`：使用 `kubectl apply -k monitoring` 统一加载监控资源。
 - PrometheusRule。
 - Grafana Dashboard JSON。
@@ -11,3 +14,32 @@
 重点关联请求队列、KV Cache、TTFT/TPOT 与 DCGM GPU 指标。
 
 ServiceMonitor 已根据 vLLM 0.9.1 实际暴露的指标，以及青海环境中 Prometheus 的标签选择规则生成。PrometheusRule 和 Dashboard 会继续根据压测数据补充，避免提前写入已变化或不存在的 PromQL。
+
+## Phase 3 指标发现
+
+先把集群 Prometheus 转发到约定的 `127.0.0.1:29090`，再执行：
+
+```bash
+python monitoring/prometheus_probe.py \
+  --gpu-uuid GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116
+```
+
+脚本不会修改 Prometheus 或 Kubernetes。vLLM 查询限定在 `vllm-infra-lab` namespace；DCGM 只读取 GPU 利用率、显存、功耗和温度四类指标，并可按本轮实验 GPU UUID 过滤。正式 Dashboard 和时间线导出器必须依据探测到的真实 metric/label 编写。
+
+本环境同时由官方 NVIDIA DCGM Exporter 和 HAMi exporter 暴露同一物理 GPU 指标。共享查询显式使用 `job="nvidia-dcgm-exporter"` 和 GPU UUID，避免同一设备被重复聚合。
+
+生成 Dashboard：
+
+```bash
+python monitoring/generate_dashboard.py
+```
+
+代表性 benchmark 完成且 Prometheus 已抓取最后一个样本后，可按实验目录自动推导起止时间并导出统一时间线：
+
+```bash
+python analysis/export_prometheus_timeline.py \
+  --experiment-dir results/YYYY-MM-DD/<experiment-id> \
+  --gpu-uuid GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116
+```
+
+默认在实验目录的 `monitoring/` 下保存 `timeline.csv`、`metadata.json`、`summary.json` 和 Prometheus 原始 matrix JSON。窗口覆盖实验目录时间到最后一轮结束，并在前后各保留 60 秒空闲基线。

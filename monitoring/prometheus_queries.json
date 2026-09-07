@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "rate_window": "1m",
+  "scrape_interval_seconds": 15,
+  "queries": [
+    {
+      "key": "running_requests",
+      "title": "Running requests",
+      "unit": "requests",
+      "promql": "max(vllm:num_requests_running{namespace=\"__NAMESPACE__\"})"
+    },
+    {
+      "key": "waiting_requests",
+      "title": "Waiting requests",
+      "unit": "requests",
+      "promql": "max(vllm:num_requests_waiting{namespace=\"__NAMESPACE__\"})"
+    },
+    {
+      "key": "kv_cache_usage_pct",
+      "title": "KV Cache usage",
+      "unit": "percent",
+      "promql": "100 * max(vllm:gpu_cache_usage_perc{namespace=\"__NAMESPACE__\"})"
+    },
+    {
+      "key": "prompt_throughput_tps",
+      "title": "Prompt throughput",
+      "unit": "tok/s",
+      "promql": "sum(rate(vllm:prompt_tokens_total{namespace=\"__NAMESPACE__\"}[1m]))"
+    },
+    {
+      "key": "generation_throughput_tps",
+      "title": "Generation throughput",
+      "unit": "tok/s",
+      "promql": "sum(rate(vllm:generation_tokens_total{namespace=\"__NAMESPACE__\"}[1m]))"
+    },
+    {
+      "key": "p95_queue_ms",
+      "title": "P95 queue latency",
+      "unit": "ms",
+      "promql": "1000 * histogram_quantile(0.95, sum by (le) (rate(vllm:request_queue_time_seconds_bucket{namespace=\"__NAMESPACE__\"}[1m])))"
+    },
+    {
+      "key": "p95_ttft_ms",
+      "title": "P95 TTFT",
+      "unit": "ms",
+      "promql": "1000 * histogram_quantile(0.95, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket{namespace=\"__NAMESPACE__\"}[1m])))"
+    },
+    {
+      "key": "p95_tpot_ms",
+      "title": "P95 TPOT",
+      "unit": "ms",
+      "promql": "1000 * histogram_quantile(0.95, sum by (le) (rate(vllm:time_per_output_token_seconds_bucket{namespace=\"__NAMESPACE__\"}[1m])))"
+    },
+    {
+      "key": "p95_e2e_ms",
+      "title": "P95 E2E latency",
+      "unit": "ms",
+      "promql": "1000 * histogram_quantile(0.95, sum by (le) (rate(vllm:e2e_request_latency_seconds_bucket{namespace=\"__NAMESPACE__\"}[1m])))"
+    },
+    {
+      "key": "gpu_util_pct",
+      "title": "GPU utilization",
+      "unit": "percent",
+      "promql": "max(DCGM_FI_DEV_GPU_UTIL{job=\"nvidia-dcgm-exporter\",UUID=\"__GPU_UUID__\"})"
+    },
+    {
+      "key": "gpu_fb_used_mib",
+      "title": "GPU framebuffer used",
+      "unit": "MiB",
+      "promql": "max(DCGM_FI_DEV_FB_USED{job=\"nvidia-dcgm-exporter\",UUID=\"__GPU_UUID__\"})"
+    },
+    {
+      "key": "gpu_power_w",
+      "title": "GPU power",
+      "unit": "W",
+      "promql": "max(DCGM_FI_DEV_POWER_USAGE{job=\"nvidia-dcgm-exporter\",UUID=\"__GPU_UUID__\"})"
+    },
+    {
+      "key": "gpu_temp_c",
+      "title": "GPU temperature",
+      "unit": "°C",
+      "promql": "max(DCGM_FI_DEV_GPU_TEMP{job=\"nvidia-dcgm-exporter\",UUID=\"__GPU_UUID__\"})"
+    }
+  ]
+}

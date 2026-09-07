@@ -108,7 +108,7 @@ vllm-infra-lab/
 - [ ] 完成多副本与弹性扩缩容实验
 - [ ] 固化结果、复现步骤与简历数据
 
-详细方案见 [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)，实验设计见 [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)。
+详细方案见 [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)，实验设计见 [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)，当前可用的简历表述与面试边界见 [docs/RESUME_DRAFT.md](docs/RESUME_DRAFT.md)。
 
 ## 上游参考
 

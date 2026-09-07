@@ -357,6 +357,19 @@ vllm:num_requests_running{namespace="vllm-infra-lab"}
 
 当前集群尚未确认存在 Prometheus Adapter、KEDA 或自定义指标 API，因此“使用 waiting requests 驱动 HPA”仍属于 Phase 4 计划，不能写成已完成。
 
+### 5.4 Phase 3 指标发现
+
+2026-09-07 通过 `insight-agent-kube-prometh-prometheus:9090` 的本地端口转发重新探测 Prometheus：
+
+- Prometheus 版本为 2.53.5；本项目 target `up=1`。
+- 实际发现 68 个 `vllm:*` 指标，running、waiting、KV Cache、Token counter、queue/TTFT/TPOT/E2E histogram 均存在。
+- 实际发现 28 个 `DCGM_FI_DEV_*` 指标；GPU UUID、物理编号、节点和 vLLM Pod 标签能够关联。
+- 同一 GPU 同时被官方 `nvidia-dcgm-exporter` 和 `hami-webui-dcgm-exporter` 采集。查询固定 `job="nvidia-dcgm-exporter"` 和 GPU UUID，避免同一设备双计。
+- 服务器设置了 HTTP(S) 代理；访问 `127.0.0.1` 端口转发必须显式绕过代理，否则请求会超时。
+- 对过去 48 小时执行 range query 时，本项目现存样本只覆盖最近约 4 小时；昨天的 benchmark 时间线已经不在 TSDB 中。因此统一时间线必须在新代表性负载结束后立即导出，不能依赖长期保留。
+
+13 条共享 PromQL 已在空闲状态逐条验证语法和聚合唯一性。running、waiting、KV Cache、Token throughput 与四项 DCGM 查询均返回单一序列；延迟 histogram 在空闲 1 分钟窗口返回 `NaN`是没有新请求的预期结果，不是查询失败。
+
 ## 6. 可复现压测方法
 
 ### 6.1 当前 short 场景
@@ -837,6 +850,27 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 4. Long SLO v1 定义为：成功率 ≥99%、P95 TTFT ≤1500 ms、P95 TPOT ≤55 ms、P95 E2E ≤13 s。它是缺少真实业务需求时的项目工程验收线：TTFT 相对 Short 的 600 ms 放宽以容纳 4 倍 Prompt，E2E 相对 6 s 放宽以容纳 2 倍输出，TPOT 只小幅放宽，因为输出变长不应使逐 Token 节奏成倍恶化。
 
 上述阈值在实验前冻结；实验后无论通过或失败都不回改阈值，只解释证据与适用范围。
+
+### 11.8 Phase 3 统一时间线实验前（已完成）
+
+代表性负载固定为单副本 mns8、256/128 Token、客户端并发 16、120 个正式请求和单轮执行。它只用于建立 Prometheus/DCGM 指标关联，不替代三轮性能基线。执行前请先回答：
+
+1. 稳定阶段 running 和 waiting 分别预计接近多少？它们与 `max-num-seqs=8`是什么关系？
+2. KV Cache 峰值预计接近 c8/c16-mns8 的约 13.5%，还是接近 27%？为什么？
+3. GPU-Util、Prompt Token throughput 和 Generation Token throughput 在时间线上会完全同步吗？各自代表什么？
+4. P95 queue、TTFT、TPOT、E2E 中，哪些预计因 waiting 显著上升，哪个预计仍接近 c8？
+5. 为什么观测负载要持续超过 1 分钟，并在实验前后各保留 60 秒空闲窗口？
+
+实验执行者原始回答：不清楚本轮与上一步测试的区别；预计稳定阶段 running=8、waiting=8；KV Cache 仍约 13.5%，因为 mns 只有 8；认为 GPU-Util 与 Generation Token throughput 同步、Prompt Token throughput 降低；认为除 E2E 接近 c8 外其他延迟都上升；尚不理解 1 分钟负载和前后空闲窗口的意义。
+
+校正后的事前假设：
+
+1. Phase 2 回答“配置或负载改变后，最终吞吐和客户端 P95 是多少”；Phase 3 本轮不再寻找新的性能提升，而是用已知会排队的 c16-mns8 复现实验，把请求调度、KV Cache、服务端 histogram 和 GPU 指标放到同一时间轴，回答“瓶颈何时出现、各指标以什么顺序变化、结束后是否恢复”。单轮数据只作为可观测性证据，不替代三轮性能基线。
+2. 稳定阶段预计 `running≈8、waiting≈8`；轮次开始、批次补入和尾部收敛时会波动，不要求每个 15 秒采样点都精确等于 8/8。
+3. KV Cache 峰值预计仍约 13%–15%，因为 mns8 同时运行约 8 条序列；waiting 请求尚未完整进入 Prefill/Decode，不会像运行序列一样占用整段 KV Cache。
+4. GPU-Util 会在 Prefill 和 Decode 计算期间整体升高，但它不能区分两阶段，也不会与 Token throughput 严格同步。Prompt throughput 在请求被接纳和 Prefill 时更偏向波峰，Generation throughput 在 Decode 稳态更接近平台；15 秒 scrape 和 1 分钟 rate 窗口还会使曲线被平滑、产生视觉滞后。
+5. P95 queue、TTFT 和 E2E 预计因第二波请求 waiting 而显著上升；TPOT 从首 Token 后开始度量，不包含完整排队时间，预计仍接近 c8 的约 42 ms。原回答把 E2E 和 TPOT 的角色写反了。
+6. Token rate 和 histogram P95 使用 `[1m]` rate 窗口，负载持续超过 1 分钟才能形成足够的非空窗口；15 秒 scrape 在一分钟内约有 4 个样本。前后各 60 秒空闲基线用于显示 `0→压力平台→0`，证明曲线对应本轮负载并确认 waiting、running 和 GPU 利用率能够恢复，而不是只截取一个无法定位的峰值。
 
 ## 12. 当前阶段与下一步
 

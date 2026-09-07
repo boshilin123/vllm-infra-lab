@@ -1,0 +1,9 @@
+name: observability-burst
+description: One controlled c16 burst for Prometheus and DCGM timeline correlation.
+prompt_tokens: 256
+output_tokens: 128
+concurrency: [16]
+warmup_requests: 10
+measured_requests: 120
+repeats: 1
+seed_offset: 400000
