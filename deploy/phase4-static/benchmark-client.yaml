@@ -26,6 +26,18 @@ spec:
           value: "1"
         - name: TRANSFORMERS_OFFLINE
           value: "1"
+        # 镜像内没有宿主机 UID 1000 的 passwd 条目；显式身份与缓存目录
+        # 避免 PyTorch getpass.getuser() 查询失败，同时保持非 root 运行。
+        - name: USER
+          value: benchmark
+        - name: LOGNAME
+          value: benchmark
+        - name: HOME
+          value: /tmp
+        - name: XDG_CACHE_HOME
+          value: /tmp/.cache
+        - name: TORCHINDUCTOR_CACHE_DIR
+          value: /tmp/torchinductor
       resources:
         requests:
           cpu: 250m

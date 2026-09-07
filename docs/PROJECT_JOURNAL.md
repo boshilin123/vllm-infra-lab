@@ -355,7 +355,7 @@ vllm:num_requests_running{namespace="vllm-infra-lab"}
 
 空闲值为 `0`，说明不是只有 target 存活，而是 vLLM 指标也已真正进入 Prometheus。
 
-当前集群尚未确认存在 Prometheus Adapter、KEDA 或自定义指标 API，因此“使用 waiting requests 驱动 HPA”仍属于 Phase 4 计划，不能写成已完成。
+Phase 3 当时尚未确认 Prometheus Adapter、KEDA 或自定义指标 API；Phase 4 后续只读审计已确认 resource/custom/external metrics API 与 KEDA 均不存在。因此“使用 waiting requests 驱动 HPA/KEDA”仍不能写成已完成，也不为个人项目安装公司集群级组件。
 
 ### 5.4 Phase 3 指标发现
 
@@ -914,7 +914,11 @@ Phase 4 的实施顺序据此冻结为：
 
 宿主机对 Service ClusterIP `10.244.25.38:8000` 的健康检查超时，因此静态实验不能直接从宿主机访问 Service。项目新增独立的 `deploy/phase4-static` Kustomize 覆盖层：base 继续安全地保持单副本；覆盖层才把副本数设为 2，并以 `maxSurge=0、maxUnavailable=1`确保滚动更新时不会短暂创建第三个 GPU Pod。覆盖层同时创建无 GPU、250m CPU/512 MiB request 的 `phase4-benchmark-client`，从集群内通过 `http://qwen3-8b:8000`压测。客户端使用 UID/GID 1000 写入本项目 hostPath，模型目录只读挂载，不修改公司 namespace。
 
-benchmark runner 已准备记录 `server-replicas` 和按顺序重复传入的 GPU 物理编号/UUID，并把 Service DNS 主机名加入 `NO_PROXY`；新增 `phase4-static.yaml` 固定 256/128 Token、c16、16 个预热请求、每轮 100 个正式请求、3 轮和独立 seed offset。两副本 dry-run 与 Kustomize 本地渲染均通过，但覆盖层尚未 dry-run 到 API Server、尚未 apply，也没有生成任何双副本性能结果。
+在静态实验准备检查点，benchmark runner 已能够记录 `server-replicas` 和按顺序重复传入的 GPU 物理编号/UUID，并把 Service DNS 主机名加入 `NO_PROXY`；新增 `phase4-static.yaml` 固定 256/128 Token、c16、16 个预热请求、每轮 100 个正式请求、3 轮和独立 seed offset。该检查点只完成本地渲染/dry-run，随后才按下文记录执行 server dry-run 和正式实验。
+
+覆盖层实际应用后，新副本从 `2026-09-07T07:25:16Z`创建到 `07:27:51Z` Ready，冷启动 155 秒；原副本全程可用。新副本分配物理 GPU 2，GPU 3保持空闲；两个 Service endpoint 均 Ready，集群内 client 健康检查返回 HTTP 200。新副本仍有 3.14 GiB KV 池、22,832 Token slots，未发现真实 ERROR/OOM/Traceback。公司 Pod 的历史 restart=1 发生在 2026-07-24，与本次扩容无关。
+
+首次从 benchmark client 启动正式压测时，在第一轮 warmup 发请求前失败：client 以 UID/GID 1000 非 root 运行，但 vLLM 镜像的 `/etc/passwd`没有该 UID；PyTorch 导入阶段的 `getpass.getuser()`因此抛出 `KeyError: getpwuid(): uid not found`。监控确认两个副本请求/Token counter 均无新增，不能把该次失败计入正式实验。修复为显式设置 `USER=benchmark`、`LOGNAME=benchmark`、`HOME=/tmp`、`XDG_CACHE_HOME=/tmp/.cache`和`TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor`，不以提升到 root 回避问题。正式长任务改由 tmux 承载，避免 SSH 断开中止客户端。
 
 ### 11.11 Phase 4 静态双副本事前假设
 
@@ -929,6 +933,16 @@ benchmark runner 已准备记录 `server-replicas` 和按顺序重复传入的 G
 5. 正式最低验收冻结为：300 个请求成功率至少 99%；Short SLO v1 三项同时通过；输出吞吐至少比单副本 c16-mns8 三轮基线 179.285 tok/s 提高 50%，即至少 268.93 tok/s；每个副本承接总请求的 40%～60%，否则单独标记负载不均衡。还必须确认公司 Pod Ready、restart 和 GPU 0 映射不变，本项目只占 GPU 1 加 GPU 2/3 之一，无 OOM、preemption 或第三个 vLLM Pod。
 6. 吞吐还必须与单卡 mns16 的 305.434 tok/s 并列报告。若双卡只超过 268.93 tok/s但低于 305.434 tok/s，只能说明它以更多硬件换取了 SLO；不能声称吞吐效率优于单卡 mns16。若同时超过 305.434 tok/s并通过全部 SLO，才形成更强的横向扩容结论。
 
+### 11.12 Phase 4 静态双副本结果与复盘
+
+正式结果目录为 `results/2026-09-07/20260907-153612-phase4-static-c16-mns8-r2/`。三轮均为 100/100 成功；中位输出吞吐 332.912 tok/s，相对单副本 c16-mns8 的 179.285 tok/s 提高 85.69%，相对单卡 c16-mns16 的 305.434 tok/s仍高 9.00%，相对两倍历史 c8 的扩展效率为 93.10%。P95 TPOT 中位数 42.484 ms 通过 50 ms SLO；P95 TTFT 5469.014 ms、P95 E2E 10741.813 ms，均未通过 600 ms/6000 ms SLO。输出吞吐 CV 7.53%，TPOT CV 0.19%。
+
+5 秒监控覆盖完整 tmux 流程的 354 个完成请求（300 正式、48 预热、6 个 benchmark 初始探测）。两个副本完成请求增量为 179/175，占比 50.56%/49.44%，累计分布通过 40%～60%标准；但 Peak waiting 分别达到 6/4。曾直接观察到一侧 `running=8、waiting=6`、另一侧仅 `running=1、waiting=0`，随后也会反向偏斜。两个副本 Peak KV Cache 都约 13.525%，两张卡负载期都达到约 97%～100% GPU-Util。
+
+这修正了“两个副本会自然形成稳定 8/8”的假设。ClusterIP Service 做连接级分配，不感知 vLLM scheduler queue；客户端连接复用使整场累计请求可以接近 50/50，但单个并发波次仍可能超过某个副本的 mns8。少数请求因此等待约一个完整 Decode 批次，P50 TTFT 约 352 ms而 P95 约 5.47 秒；TPOT 不含完整排队时间，所以仍稳定达标。横向计算容量已验证，入口分流成为新的尾延迟瓶颈。下一步应做确定性 8/8 对照，把两卡容量与 Service 分流分开验证，而不是立即增加 mns、第三张卡或自动扩容。
+
+实验结束后已恢复 base：Deployment `1/1/1`、策略 `Recreate`，只保留原 Pod/GPU 1且 restart=0；GPU 2释放到约 1 MiB，GPU 3始终空闲；公司 GPU 0保持约 5901 MiB、Pod Ready且历史 restart仍为1。安全回退验收通过。
+
 ## 12. 当前阶段与下一步
 
 ### 12.1 阶段状态
@@ -939,9 +953,9 @@ benchmark runner 已准备记录 `server-replicas` 和按顺序重复传入的 G
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
 | Phase 2 基准与参数实验 | 已完成 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16、Prefill/Decode/组合长上下文、三张客户端性能图 | GPU/KV/waiting 时序证据归入 Phase 3 |
 | Phase 3 可观测性 | 已完成（共享环境边界） | `/metrics`、ServiceMonitor、Prometheus 指标发现、共享 PromQL、Grafana 9.3/schema 37 Dashboard JSON、正式统一时间线与可复现 SVG、c16 排队和 Pod 自愈证据 | 共享 Grafana 持久化导入因安全边界明确跳过，不作为欠项 |
-| Phase 4 多副本与弹性 | 进行中（只读审计） | 事前判断、实施顺序、宿主机 GPU 瞬时快照 | Kubernetes 设备分配、静态双副本、Adapter/KEDA、HPA 与持续流量实验 |
+| Phase 4 多副本与弹性 | 进行中（静态双副本已完成） | 安全审计、双副本覆盖层、集群内客户端、155 秒冷启动、三轮容量/分流实验、安全回退 | 确定性 8/8 对照、namespace 内最小弹性策略或离线回放 |
 
-Phase 2 已闭环。Phase 3 的 c16-mns8 Prometheus/DCGM 统一时间线、Dashboard 版本兼容、真实 PromQL 和故障证据也已闭环，但不写入公司的共享 Grafana。当前主线是提交兼容性修正，然后进入 Phase 4 的只读资源与调度安全审计；不再扩展 Phase 2 参数矩阵。
+Phase 2、Phase 3 已闭环。Phase 4 已证明双副本将 c16 输出吞吐提高 85.69%，同时发现普通 Service 的瞬时连接分配偏斜仍使 TTFT/E2E SLO 失败。当前主线是用确定性 8/8 对照隔离“计算容量”和“入口分流”，再决定是否值得实现 namespace 范围内的最小弹性策略；不安装公司集群级 Adapter/KEDA，也不增加第三张 GPU。
 
 ### 12.2 紧接着要做什么
 
@@ -967,6 +981,8 @@ Phase 2 已闭环。Phase 3 的 c16-mns8 Prometheus/DCGM 统一时间线、Dashb
 
 第十一步已完成只读部分并进入静态实验准备：GPU 0/1 已分别映射到公司 Pod/本项目 Pod，GPU 2/3 在宿主机与 Kubernetes 两侧均为空闲；CPU/内存 request 与宿主机瞬时余量可支持一次短时第二副本。集群没有 Metrics API、custom/external metrics API 或 KEDA，因此不修改公司基础设施。Phase 4 静态覆盖层、集群内 benchmark client、多副本 metadata 和独立场景已完成本地渲染/dry-run；下一步由项目本人检查 Git diff，并对覆盖层执行 client/server dry-run，尚不直接 apply。
 
+第十二步已完成：静态双副本在 GPU 1/2 上安全运行并回退，冷启动 155 秒，三轮 300/300 正式请求成功。中位输出吞吐 332.912 tok/s，但 P95 TTFT/E2E 为 5469/10742 ms，仍违反 Short SLO；每副本整场累计请求约 50/50，但瞬时 waiting 峰值为 6/4，确认瓶颈转移到连接级分流。首次 client UID 报错发生在发请求前，已用非 root 环境变量修复并明确排除。
+
 ## 13. 当前可用于面试的表述边界
 
 ### 13.1 已经有证据支撑
@@ -975,12 +991,14 @@ Phase 2 已闭环。Phase 3 的 c16-mns8 Prometheus/DCGM 统一时间线、Dashb
 - 将 vLLM `/metrics` 通过 ServiceMonitor 接入既有 Prometheus，验证 target 存活和真实请求指标持续入库。
 - 构建固定 Token 长度、预热、三轮重复、种子隔离和 JSON/CSV 汇总的可复现压测流程；在单张 A10、256/128 Token 场景下，将 `max-num-seqs` 从 8 提高到 16，使 c16 输出吞吐从 179.29 提高到 305.43 tok/s、P95 E2E 从 11.10 秒降到 6.15 秒，同时识别出 TTFT/E2E 仍未满足 SLO 的边界。各档均为 300/300 请求成功。
 - 在同卡相邻窗口用 256/128、1024/128、256/256、1024/256 四组控制变量实验拆分 Prefill 与 Decode：Prompt 增长使 P95 TTFT 上升约 201%，输出翻倍使 P95 E2E 增加约 5.10 秒而 P95 TPOT 基本不变；组合场景 180/180 成功并通过预注册 P95 Long SLO，但 E2E 仅剩约 211 ms 余量。
+- 在共享环境安全审计后短时扩至两张 A10，以 `maxSurge=0`限制最多两个 GPU Pod；c16 输出吞吐相对单副本提高 85.69%至 332.912 tok/s，300/300 成功。每副本累计请求约 50/50，但瞬时 waiting 达 6/4并导致 TTFT/E2E SLO失败，定位普通 Service 的连接级分流为下一瓶颈；实验后恢复单副本且公司服务无变化。
 
 并发扫描和 mns16 参数实验的原始数据与报告均已提交，可作为已固化的远端证据；面试前仍应从原始 JSON 独立复算一次。
 
 ### 13.2 目前不能声称
 
-- 不能声称已经完成 HPA、自定义指标弹性或多副本路由。
+- 不能声称已经完成 HPA/KEDA、自定义指标弹性或队列感知路由。
+- 不能声称普通 ClusterIP 双副本已经满足 Short SLO；它只验证了容量扩展，并暴露了瞬时分流偏斜。
 - 不能声称已经找到全局最优参数或单卡饱和点。
 - 不能把 vLLM 自带 Continuous Batching、KV Cache 说成自己实现。
 - 不能把当前 1024/256 结果推广到更长上下文、其他模型、量化模型或其他 GPU。
