@@ -13,6 +13,15 @@
 
 重点关联请求队列、KV Cache、TTFT/TPOT 与 DCGM GPU 指标。
 
+吞吐口径必须分开解释：
+
+- Prompt throughput：`rate(vllm:prompt_tokens_total[1m])`，表示 vLLM 计入的输入 Token 速率。在当前 vLLM 0.9.1 V1 实现中，一条请求的 `prompt_len` 在产生首个输出 Token 时一次性计入，因此它更接近 Prefill 完成/首 Token 附近的记账速率，不是 GPU 每一时刻处理 Prefill Token 的底层轨迹。
+- Generation throughput：`rate(vllm:generation_tokens_total[1m])`，表示全服务每秒生成的输出 Token，计数随 Decode 迭代产生的新 Token 增加。
+- Total token throughput：若需要统一口径，定义为 Prompt throughput 与 Generation throughput 之和；它衡量输入加输出的 Token 处理量，不等同于用户实际看到的生成速度。
+- benchmark 的 Output throughput 使用“正式请求生成 Token 总数 / 正式阶段耗时”，与上面的 Generation throughput 含义接近但统计窗口不同；Request throughput 则是每秒完成请求数。
+
+由于 Prometheus 使用 15 秒抓取和 1 分钟 `rate` 窗口，时间线展示的是平滑后的计数速率，不能要求上述曲线与瞬时 GPU-Util 逐点同步。
+
 ServiceMonitor 已根据 vLLM 0.9.1 实际暴露的指标，以及青海环境中 Prometheus 的标签选择规则生成。PrometheusRule 和 Dashboard 会继续根据压测数据补充，避免提前写入已变化或不存在的 PromQL。
 
 ## Phase 3 指标发现

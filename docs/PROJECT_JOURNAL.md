@@ -134,13 +134,13 @@ GitHub 的提示“does not provide shell access”是正常现象，表示 SSH 
 
 曾遇到 `.git/config: Permission denied`，原因是此前用 `sudo` 造成仓库文件所有权不一致。修复所有权后，以普通用户执行 Git 操作。后续不要用 `sudo git ...`。
 
-截至 Phase 2 性能图生成前，远端最新提交为：
+截至 Phase 3 代表性观测负载调整前，远端最新提交为：
 
 ```text
-c3524fb data: add prefill and decode benchmark comparison
+188cae0 monitoring: prepare unified serving and GPU timeline
 ```
 
-四组单卡 Prefill/Decode 正式结果、报告和复盘均已推送。当前本地正在生成可复现性能图，尚未提交。
+Phase 2 的四组单卡负载结果与三张可复现性能图均已推送；Phase 3 的共享 PromQL、Grafana Dashboard、统一时间线导出器和代表性负载也已推送。当前仅在正式采集前把观测请求数从 120 修正为 240，以获得足够的完整 `[1m]` 稳态窗口。
 
 ### 3.2 Kubernetes 集群
 
@@ -853,7 +853,7 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 
 ### 11.8 Phase 3 统一时间线实验前（已完成）
 
-代表性负载固定为单副本 mns8、256/128 Token、客户端并发 16、120 个正式请求和单轮执行。它只用于建立 Prometheus/DCGM 指标关联，不替代三轮性能基线。执行前请先回答：
+代表性负载固定为单副本 mns8、256/128 Token、客户端并发 16、240 个正式请求和单轮执行。它只用于建立 Prometheus/DCGM 指标关联，不替代三轮性能基线。执行前请先回答：
 
 1. 稳定阶段 running 和 waiting 分别预计接近多少？它们与 `max-num-seqs=8`是什么关系？
 2. KV Cache 峰值预计接近 c8/c16-mns8 的约 13.5%，还是接近 27%？为什么？
@@ -868,9 +868,11 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 1. Phase 2 回答“配置或负载改变后，最终吞吐和客户端 P95 是多少”；Phase 3 本轮不再寻找新的性能提升，而是用已知会排队的 c16-mns8 复现实验，把请求调度、KV Cache、服务端 histogram 和 GPU 指标放到同一时间轴，回答“瓶颈何时出现、各指标以什么顺序变化、结束后是否恢复”。单轮数据只作为可观测性证据，不替代三轮性能基线。
 2. 稳定阶段预计 `running≈8、waiting≈8`；轮次开始、批次补入和尾部收敛时会波动，不要求每个 15 秒采样点都精确等于 8/8。
 3. KV Cache 峰值预计仍约 13%–15%，因为 mns8 同时运行约 8 条序列；waiting 请求尚未完整进入 Prefill/Decode，不会像运行序列一样占用整段 KV Cache。
-4. GPU-Util 会在 Prefill 和 Decode 计算期间整体升高，但它不能区分两阶段，也不会与 Token throughput 严格同步。Prompt throughput 在请求被接纳和 Prefill 时更偏向波峰，Generation throughput 在 Decode 稳态更接近平台；15 秒 scrape 和 1 分钟 rate 窗口还会使曲线被平滑、产生视觉滞后。
+4. GPU-Util 会在 Prefill 和 Decode 计算期间整体升高，但它不能区分两阶段，也不会与 Token throughput 严格同步。当前 vLLM 0.9.1 V1 在请求产生首个输出 Token 时一次性把整段 `prompt_len` 计入 Prompt counter，因此 Prompt throughput 更接近 Prefill 完成/首 Token 附近的记账波峰；Generation throughput 随 Decode 迭代产生的新 Token 增加，在 Decode 稳态更接近平台。15 秒 scrape 和 1 分钟 rate 窗口还会使曲线被平滑、产生视觉滞后。
 5. P95 queue、TTFT 和 E2E 预计因第二波请求 waiting 而显著上升；TPOT 从首 Token 后开始度量，不包含完整排队时间，预计仍接近 c8 的约 42 ms。原回答把 E2E 和 TPOT 的角色写反了。
 6. Token rate 和 histogram P95 使用 `[1m]` rate 窗口，负载持续超过 1 分钟才能形成足够的非空窗口；15 秒 scrape 在一分钟内约有 4 个样本。前后各 60 秒空闲基线用于显示 `0→压力平台→0`，证明曲线对应本轮负载并确认 waiting、running 和 GPU 利用率能够恢复，而不是只截取一个无法定位的峰值。
+
+实验执行者进一步质疑 120 个请求是否过少。按已有 c16-mns8 约 1.4 req/s 估算，120 个请求只持续约 86 秒：扣除 `[1m]` 窗口形成时间后，稳态有效采样点太少。因此在正式执行前把请求数修正为 240，预计持续约 171 秒，约有 11 个抓取点，其中约 7 个处于完整 1 分钟窗口形成后的负载期。并发和请求形状不变，所以没有加大瞬时 GPU 压力，只延长了单轮观测时间；总正式请求数仍少于 Phase 2 单场景三轮的 300 个。
 
 ## 12. 当前阶段与下一步
 
@@ -880,11 +882,11 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 | --- | --- | --- | --- |
 | Phase 0 环境与安全边界 | 已完成 | 软硬件、模型、共享工作负载、Git 认证盘点 | 每次实验前刷新动态资源快照 |
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
-| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16、Prefill/Decode/组合长上下文、三张客户端性能图 | 检查并提交图表；GPU/KV/waiting 时序图与 Phase 3 统一采集 |
-| Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 查询 | Grafana Dashboard、统一时间线、故障场景 |
+| Phase 2 基准与参数实验 | 已完成 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16、Prefill/Decode/组合长上下文、三张客户端性能图 | GPU/KV/waiting 时序证据归入 Phase 3 |
+| Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 指标发现、共享 PromQL、Grafana Dashboard JSON、统一时间线导出器 | 正式统一时间线采集与解读、Dashboard 导入验收、故障场景整理 |
 | Phase 4 多副本与弹性 | 计划中 | 架构和指标方向 | 第二张可用 GPU、共享模型、Adapter/KEDA、HPA 与突发流量实验 |
 
-Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 Dashboard 尚未完成；当前并发扫描可以继续使用 PromQL 和 `nvidia-smi` 观测。
+Phase 2 已闭环。当前主线是 Phase 3：用一轮已知会排队的 c16-mns8 负载验证 Dashboard 与 Prometheus/DCGM 统一时间线；不再扩展 Phase 2 参数矩阵。
 
 ### 12.2 紧接着要做什么
 
@@ -900,11 +902,11 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 
 第六步已完成：固定并发 8 和 mns8，在当前 Pod/GPU 的相邻时间窗口完成 `256/128` 校准、`1024/128` Prefill 对照、`256/256` Decode 对照和 `1024/256` 组合长上下文。四组共 840/840 个正式请求成功，三种长负载全部通过预注册的 P95 Long SLO；原始数据、聚合和 README 当前等待项目本人检查提交。
 
-第七步已完成实现：最终 Pod 与日志审计通过，四组结果已提交为 `c3524fb`；绘图脚本从已提交的并发扫描、mns 参数实验和四场景聚合数据生成三张确定性 SVG，已通过语法、XML、重复生成和视觉检查，当前等待项目本人检查提交。
+第七步已完成：最终 Pod 与日志审计通过，四组结果已提交为 `c3524fb`；三张确定性 SVG 已完成语法、XML、重复生成和视觉检查，并提交为 `6f8cad8`。
 
-Phase 2 尚保留一项边界：原计划包含 GPU 指标图表，但此前三秒轮询结果没有完整保存为时序文件，不能事后拼造。下一步进入 Phase 3，使用已有 Prometheus/DCGM 持久化采集一次代表性负载，把 running、waiting、KV Cache 和 GPU 指标对齐到统一时间线；完成后再将 Phase 2/3 对应交付物一起闭环。
+第八步已完成准备：Phase 3 的 13 条共享 PromQL、Grafana Dashboard JSON、统一时间线导出器和代表性 c16-mns8 场景已提交为 `188cae0`。由于此前三秒轮询没有完整保存，不能事后拼造 GPU 时序；下一步使用 Prometheus/DCGM 正式采集一次 240 请求的代表性负载，把 running、waiting、KV Cache、服务端延迟和 GPU 指标对齐到统一时间线。
 
-后续顺序保持为：完成 Phase 2 的 Long Context 和性能图表；完成 Phase 3 的 Grafana Dashboard、统一时间线和已有故障证据整理；最后才进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
+后续顺序保持为：先完成 Phase 3 的统一时间线、Dashboard 导入验收和已有故障证据整理；最后才进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
 
 ## 13. 当前可用于面试的表述边界
 

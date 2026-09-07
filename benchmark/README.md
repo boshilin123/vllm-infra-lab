@@ -57,7 +57,7 @@ Long SLO v1 只用于本项目合成长上下文负载的工程验收，不冒�
 
 ## Phase 3 代表性观测负载
 
-`observability-burst.yaml` 使用 256/128 Token、客户端并发 16、10 个预热请求、120 个正式请求和 1 次重复。它不是新的性能基线，而是为 15 秒 Prometheus 抓取周期提供约 1–2 分钟的稳定 c16-mns8 压力，预计能够同时观察 `running≈8`、`waiting≈8`、KV Cache、吞吐、延迟和 GPU 指标。
+`observability-burst.yaml` 使用 256/128 Token、客户端并发 16、10 个预热请求、240 个正式请求和 1 次重复。按已有 c16-mns8 约 1.4 req/s 的完成速率估算，正式负载约持续 2.5–3 分钟，可覆盖约 11 个 15 秒抓取点，并在 PromQL 的 `[1m]` rate 窗口充分形成后保留约 7 个负载期样本。它不是新的性能基线，而是稳定复现 c16-mns8 压力，预计能够同时观察 `running≈8`、`waiting≈8`、KV Cache、吞吐、延迟和 GPU 指标。
 
 只执行一轮是为了减少共享公司 GPU 的占用；该结果不能替代 Phase 2 的三轮正式实验，也不用于重新计算吞吐提升百分比。独立 `seed_offset=400000` 用于避免命中之前场景的随机 Prompt Prefix Cache。
 

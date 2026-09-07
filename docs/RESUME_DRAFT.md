@@ -15,7 +15,7 @@
 以下版本只引用已经完成的 Phase 1/2 和 ServiceMonitor 事实：
 
 1. 基于 Kubernetes 与 vLLM 0.9.1 部署 Qwen3-8B BF16 单卡推理服务，配置只读模型挂载、startup/readiness/liveness 探针及 ServiceMonitor，完成 OpenAI 兼容 API、Pod 删除自愈和 Prometheus target 验收。
-2. 构建固定 Token 长度、预热、独立随机种子、三轮重复与 JSON/CSV 聚合的压测流程；在单张 A10 的 256/128 Token 场景中定位 `max-num-seqs=8` 下吞吐拐点约为并发 8，并量化并发 16 时 P95 TTFT 从约 525 ms 恶化至 6.02 s 的排队代价。
+2. 构建固定 Token 长度、预热、独立随机种子、三轮重复与 JSON/CSV 聚合的压测流程；在单张 A10 的 256/128 Token 场景中观察到 `max-num-seqs=8` 下 c8→c16 吞吐仅增 0.27%，并量化 P95 TTFT 从约 525 ms 恶化至 6.02 s 的排队代价。
 3. 通过 `max-num-seqs=8→16` 单变量实验将 c16 输出吞吐从 179.29 提升至 305.43 tok/s（+70.36%），P95 E2E 从 11.10 s 降至 6.15 s；结合预注册 SLO 识别 TTFT/E2E 仍未达标，提出“每副本约 8 并发、后续用受控双副本扩容”而非继续扩大单卡批宽的方案。
 
 若版面允许，可将第三条之后补成第四条：
@@ -75,8 +75,8 @@
 
 ```text
 先建立可恢复的单副本服务
-→ 用并发扫描发现 mns8 的排队拐点
-→ 用 mns8/16 单变量实验确认是配置上限而非 KV 容量上限
+→ 用并发扫描观察到 mns8 下 c8→c16 的吞吐平台与排队症状
+→ 固定 c16、只改变 mns8/16，确认首先命中的是配置上限而非单卡物理/KV 容量上限
 → 用 SLO 发现单卡更高吞吐仍不能满足尾延迟
 → 用 Prefill/Decode 对照解释延迟来自哪里
 → 用 Prometheus/DCGM 统一时间线补齐运行时因果证据
