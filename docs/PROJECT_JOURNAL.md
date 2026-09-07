@@ -883,10 +883,10 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 | Phase 0 环境与安全边界 | 已完成 | 软硬件、模型、共享工作负载、Git 认证盘点 | 每次实验前刷新动态资源快照 |
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
 | Phase 2 基准与参数实验 | 已完成 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16、Prefill/Decode/组合长上下文、三张客户端性能图 | GPU/KV/waiting 时序证据归入 Phase 3 |
-| Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 指标发现、共享 PromQL、Grafana Dashboard JSON、正式统一时间线与可复现 SVG | Dashboard 导入验收、故障场景整理 |
+| Phase 3 可观测性 | 已完成（共享环境边界） | `/metrics`、ServiceMonitor、Prometheus 指标发现、共享 PromQL、Grafana 9.3/schema 37 Dashboard JSON、正式统一时间线与可复现 SVG、c16 排队和 Pod 自愈证据 | 共享 Grafana 持久化导入因安全边界明确跳过，不作为欠项 |
 | Phase 4 多副本与弹性 | 计划中 | 架构和指标方向 | 第二张可用 GPU、共享模型、Adapter/KEDA、HPA 与突发流量实验 |
 
-Phase 2 已闭环。Phase 3 的 c16-mns8 Prometheus/DCGM 统一时间线也已采集；当前主线是检查提交本轮证据、完成 Dashboard 导入验收和整理已有故障场景，不再扩展 Phase 2 参数矩阵。
+Phase 2 已闭环。Phase 3 的 c16-mns8 Prometheus/DCGM 统一时间线、Dashboard 版本兼容、真实 PromQL 和故障证据也已闭环，但不写入公司的共享 Grafana。当前主线是提交兼容性修正，然后进入 Phase 4 的只读资源与调度安全审计；不再扩展 Phase 2 参数矩阵。
 
 ### 12.2 紧接着要做什么
 
@@ -908,7 +908,9 @@ Phase 2 已闭环。Phase 3 的 c16-mns8 Prometheus/DCGM 统一时间线也已�
 
 第九步已完成：240/240 个正式请求成功，输出吞吐 186.87 tok/s；统一时间线捕获 `running=8、waiting=8`、KV Cache 峰值 13.525%、GPU-Util 峰值 97%，并验证负载结束后恢复空闲。导出检查同时发现 vLLM JSON 的 `date` 是轮次完成时间，修正了错误重复叠加 `duration` 的窗口边界；正式窗口为 `10:42:14–10:47:39`。运行后审计确认 live mns8 参数、Pod Ready/Running、重启 0、preemption 0；宽泛错误关键词命中的内容均来自 INFO 级随机 Prompt，没有发现真实错误日志。
 
-后续顺序保持为：先完成 Phase 3 的统一时间线、Dashboard 导入验收和已有故障证据整理；最后才进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
+第十步已完成只读 Grafana 兼容性审计：集群运行 Grafana 9.3.14，子路径为 `/ui/insight-grafana`，默认 Prometheus 数据源 UID 为 `PBFA97CFB590B2093`，现有 Dashboard 使用 schema 37。生成器已从未来版本 schema 39 修正为 37。直连身份对现有 Dashboard 为 `canSave=false`；持久化导入需要更高权限并写入公司共享 `insight-system` Grafana，违反本项目安全边界，因此明确跳过，不把“未写公司系统”误报为功能失败。
+
+后续顺序保持为：先提交 Phase 3 的 Grafana 兼容性修正；随后进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
 
 ## 13. 当前可用于面试的表述边界
 

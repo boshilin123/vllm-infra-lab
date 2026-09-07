@@ -43,6 +43,10 @@ python monitoring/prometheus_probe.py \
 python monitoring/generate_dashboard.py
 ```
 
+青海环境只读发现结果为 Grafana 9.3.14、`appSubUrl=/ui/insight-grafana`，默认 Prometheus 数据源名为 `Prometheus`、UID 为 `PBFA97CFB590B2093`；现有 Dashboard 使用 `schemaVersion=37`，生成器据此固定兼容版本。13 个 panel 的 PromQL 与统一时间线导出器共享同一配置，并已逐条对真实 Prometheus 验证。
+
+本项目不把 Dashboard 持久化导入公司的 `insight-system` Grafana：直连只读身份对现有 Dashboard 显示 `canSave=false`，而用更高权限导入会写入公司共享 Grafana 数据库，超出“写操作只限项目仓库和 `vllm-infra-lab` namespace”的安全边界。仓库交付可导入 JSON、真实查询验证结果和等价的确定性 SVG；只有在个人/专用 Grafana 环境中才执行持久化导入。
+
 代表性 benchmark 完成且 Prometheus 已抓取最后一个样本后，可按实验目录自动推导起止时间并导出统一时间线：
 
 ```bash

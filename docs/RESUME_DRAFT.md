@@ -91,7 +91,7 @@
 
 ## 6. 当前不能写进简历的内容
 
-- 尚未完成 Grafana Dashboard 导入验收。
+- Grafana Dashboard JSON 已按公司现有 Grafana 9.3.14/schema 37 生成，13 条 PromQL 已对真实数据源验证；但没有持久化导入公司的共享 Grafana，不能声称完成了线上 Dashboard 发布。
 - 尚未完成双副本、负载均衡、HPA/KEDA 或自定义指标扩缩容。
 - 尚未证明 mns16、305 tok/s 是单卡全局最优或物理峰值。
 - 尚未验证更长上下文、量化模型、其他 GPU 或真实线上流量。

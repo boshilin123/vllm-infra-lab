@@ -854,7 +854,7 @@
     }
   ],
   "refresh": "15s",
-  "schemaVersion": 39,
+  "schemaVersion": 37,
   "tags": [
     "vllm",
     "ai-infra",

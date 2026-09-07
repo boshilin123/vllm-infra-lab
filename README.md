@@ -103,7 +103,7 @@ vllm-infra-lab/
 - [x] 盘点硬件、集群、模型和现有运行环境
 - [x] 建立可重复部署的单副本 vLLM 基线
 - [x] 完成并发与请求长度基准测试（Short c1/2/4/8/16 与 Prefill/Decode/组合长上下文对照）
-- [ ] 完成 vLLM 与 GPU 可观测性（ServiceMonitor 已接入，Dashboard 待完成）
+- [x] 完成 vLLM 与 GPU 可观测性（ServiceMonitor、13-panel Dashboard JSON、Prometheus/DCGM 统一时间线；按安全边界不写公司共享 Grafana）
 - [x] 完成首个关键引擎参数对照实验（`max-num-seqs` 8/16）
 - [ ] 完成多副本与弹性扩缩容实验
 - [ ] 固化结果、复现步骤与简历数据

@@ -58,11 +58,11 @@ HAMi 不进入本项目的主标题和核心验收项。若后续开展 GPU 配�
 交付物：
 
 - vLLM ServiceMonitor 或等价抓取配置。
-- Grafana Dashboard。
+- 与现有 Grafana 版本兼容的可导入 Dashboard JSON；仅在个人/专用 Grafana 中持久化导入。
 - vLLM 请求指标与 DCGM GPU 指标的统一时间线。
 - 显存不足、请求排队或 Pod 重启等至少一个故障场景记录。
 
-验收：能够从 Dashboard 解释压测期间请求排队、KV Cache 与 GPU 利用率的关联。
+验收：全部 panel PromQL 对真实数据源验证，并能从统一时间线解释压测期间请求排队、KV Cache 与 GPU 利用率的关联。公司共享 Grafana 不属于本项目允许的写入范围时，以版本兼容 JSON、真实 PromQL 结果和等价 SVG 完成验收，不为截图突破安全边界。
 
 ### Phase 4：多副本与弹性
 

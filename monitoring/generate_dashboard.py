@@ -11,6 +11,8 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 QUERY_CONFIG = REPO_ROOT / "monitoring" / "prometheus_queries.json"
 OUTPUT = REPO_ROOT / "monitoring" / "grafana-dashboard.json"
+# 青海环境当前运行 Grafana 9.3.14；读取现有 Dashboard 确认其 schemaVersion=37。
+GRAFANA_SCHEMA_VERSION = 37
 
 GRAFANA_UNITS = {
     "requests": "short",
@@ -117,7 +119,7 @@ def main() -> int:
         "liveNow": False,
         "panels": panels,
         "refresh": "15s",
-        "schemaVersion": 39,
+        "schemaVersion": GRAFANA_SCHEMA_VERSION,
         "tags": ["vllm", "ai-infra", "gpu"],
         "templating": {
             "list": [
