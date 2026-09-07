@@ -134,13 +134,13 @@ GitHub 的提示“does not provide shell access”是正常现象，表示 SSH 
 
 曾遇到 `.git/config: Permission denied`，原因是此前用 `sudo` 造成仓库文件所有权不一致。修复所有权后，以普通用户执行 Git 操作。后续不要用 `sudo git ...`。
 
-截至 Phase 3 代表性观测负载调整前，远端最新提交为：
+截至 Phase 3 统一时间线正式采集前，远端最新提交为：
 
 ```text
-188cae0 monitoring: prepare unified serving and GPU timeline
+fef9d13 bench: lengthen observability burst
 ```
 
-Phase 2 的四组单卡负载结果与三张可复现性能图均已推送；Phase 3 的共享 PromQL、Grafana Dashboard、统一时间线导出器和代表性负载也已推送。当前仅在正式采集前把观测请求数从 120 修正为 240，以获得足够的完整 `[1m]` 稳态窗口。
+Phase 2 的四组单卡负载结果与三张可复现性能图均已推送；Phase 3 的共享 PromQL、Grafana Dashboard、统一时间线导出器和 240 请求代表性负载也已推送。当前本地已完成正式统一时间线采集和报告，等待项目本人检查提交。
 
 ### 3.2 Kubernetes 集群
 
@@ -883,10 +883,10 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 | Phase 0 环境与安全边界 | 已完成 | 软硬件、模型、共享工作负载、Git 认证盘点 | 每次实验前刷新动态资源快照 |
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
 | Phase 2 基准与参数实验 | 已完成 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16、Prefill/Decode/组合长上下文、三张客户端性能图 | GPU/KV/waiting 时序证据归入 Phase 3 |
-| Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 指标发现、共享 PromQL、Grafana Dashboard JSON、统一时间线导出器 | 正式统一时间线采集与解读、Dashboard 导入验收、故障场景整理 |
+| Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 指标发现、共享 PromQL、Grafana Dashboard JSON、正式统一时间线与可复现 SVG | Dashboard 导入验收、故障场景整理 |
 | Phase 4 多副本与弹性 | 计划中 | 架构和指标方向 | 第二张可用 GPU、共享模型、Adapter/KEDA、HPA 与突发流量实验 |
 
-Phase 2 已闭环。当前主线是 Phase 3：用一轮已知会排队的 c16-mns8 负载验证 Dashboard 与 Prometheus/DCGM 统一时间线；不再扩展 Phase 2 参数矩阵。
+Phase 2 已闭环。Phase 3 的 c16-mns8 Prometheus/DCGM 统一时间线也已采集；当前主线是检查提交本轮证据、完成 Dashboard 导入验收和整理已有故障场景，不再扩展 Phase 2 参数矩阵。
 
 ### 12.2 紧接着要做什么
 
@@ -905,6 +905,8 @@ Phase 2 已闭环。当前主线是 Phase 3：用一轮已知会排队的 c16-mn
 第七步已完成：最终 Pod 与日志审计通过，四组结果已提交为 `c3524fb`；三张确定性 SVG 已完成语法、XML、重复生成和视觉检查，并提交为 `6f8cad8`。
 
 第八步已完成准备：Phase 3 的 13 条共享 PromQL、Grafana Dashboard JSON、统一时间线导出器和代表性 c16-mns8 场景已提交为 `188cae0`。由于此前三秒轮询没有完整保存，不能事后拼造 GPU 时序；下一步使用 Prometheus/DCGM 正式采集一次 240 请求的代表性负载，把 running、waiting、KV Cache、服务端延迟和 GPU 指标对齐到统一时间线。
+
+第九步已完成：240/240 个正式请求成功，输出吞吐 186.87 tok/s；统一时间线捕获 `running=8、waiting=8`、KV Cache 峰值 13.525%、GPU-Util 峰值 97%，并验证负载结束后恢复空闲。导出检查同时发现 vLLM JSON 的 `date` 是轮次完成时间，修正了错误重复叠加 `duration` 的窗口边界；正式窗口为 `10:42:14–10:47:39`。运行后审计确认 live mns8 参数、Pod Ready/Running、重启 0、preemption 0；宽泛错误关键词命中的内容均来自 INFO 级随机 Prompt，没有发现真实错误日志。
 
 后续顺序保持为：先完成 Phase 3 的统一时间线、Dashboard 导入验收和已有故障证据整理；最后才进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
 

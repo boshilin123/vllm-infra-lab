@@ -1,0 +1,92 @@
+{
+  "buffer_seconds": 60,
+  "end_utc": "2026-09-07T02:47:39Z",
+  "experiment_id": "20260907-104314-observability-burst-c16-mns8",
+  "gpu_uuid": "GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116",
+  "namespace": "vllm-infra-lab",
+  "prometheus_version": "2.53.5",
+  "queries": [
+    {
+      "key": "running_requests",
+      "promql": "max(vllm:num_requests_running{namespace=\"vllm-infra-lab\"})",
+      "title": "Running requests",
+      "unit": "requests"
+    },
+    {
+      "key": "waiting_requests",
+      "promql": "max(vllm:num_requests_waiting{namespace=\"vllm-infra-lab\"})",
+      "title": "Waiting requests",
+      "unit": "requests"
+    },
+    {
+      "key": "kv_cache_usage_pct",
+      "promql": "100 * max(vllm:gpu_cache_usage_perc{namespace=\"vllm-infra-lab\"})",
+      "title": "KV Cache usage",
+      "unit": "percent"
+    },
+    {
+      "key": "prompt_throughput_tps",
+      "promql": "sum(rate(vllm:prompt_tokens_total{namespace=\"vllm-infra-lab\"}[1m]))",
+      "title": "Prompt throughput",
+      "unit": "tok/s"
+    },
+    {
+      "key": "generation_throughput_tps",
+      "promql": "sum(rate(vllm:generation_tokens_total{namespace=\"vllm-infra-lab\"}[1m]))",
+      "title": "Generation throughput",
+      "unit": "tok/s"
+    },
+    {
+      "key": "p95_queue_ms",
+      "promql": "1000 * histogram_quantile(0.95, sum by (le) (rate(vllm:request_queue_time_seconds_bucket{namespace=\"vllm-infra-lab\"}[1m])))",
+      "title": "P95 queue latency",
+      "unit": "ms"
+    },
+    {
+      "key": "p95_ttft_ms",
+      "promql": "1000 * histogram_quantile(0.95, sum by (le) (rate(vllm:time_to_first_token_seconds_bucket{namespace=\"vllm-infra-lab\"}[1m])))",
+      "title": "P95 TTFT",
+      "unit": "ms"
+    },
+    {
+      "key": "p95_tpot_ms",
+      "promql": "1000 * histogram_quantile(0.95, sum by (le) (rate(vllm:time_per_output_token_seconds_bucket{namespace=\"vllm-infra-lab\"}[1m])))",
+      "title": "P95 TPOT",
+      "unit": "ms"
+    },
+    {
+      "key": "p95_e2e_ms",
+      "promql": "1000 * histogram_quantile(0.95, sum by (le) (rate(vllm:e2e_request_latency_seconds_bucket{namespace=\"vllm-infra-lab\"}[1m])))",
+      "title": "P95 E2E latency",
+      "unit": "ms"
+    },
+    {
+      "key": "gpu_util_pct",
+      "promql": "max(DCGM_FI_DEV_GPU_UTIL{job=\"nvidia-dcgm-exporter\",UUID=\"GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116\"})",
+      "title": "GPU utilization",
+      "unit": "percent"
+    },
+    {
+      "key": "gpu_fb_used_mib",
+      "promql": "max(DCGM_FI_DEV_FB_USED{job=\"nvidia-dcgm-exporter\",UUID=\"GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116\"})",
+      "title": "GPU framebuffer used",
+      "unit": "MiB"
+    },
+    {
+      "key": "gpu_power_w",
+      "promql": "max(DCGM_FI_DEV_POWER_USAGE{job=\"nvidia-dcgm-exporter\",UUID=\"GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116\"})",
+      "title": "GPU power",
+      "unit": "W"
+    },
+    {
+      "key": "gpu_temp_c",
+      "promql": "max(DCGM_FI_DEV_GPU_TEMP{job=\"nvidia-dcgm-exporter\",UUID=\"GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116\"})",
+      "title": "GPU temperature",
+      "unit": "°C"
+    }
+  ],
+  "query_config": "monitoring/prometheus_queries.json",
+  "schema_version": 1,
+  "start_utc": "2026-09-07T02:42:14Z",
+  "step_seconds": 15
+}

@@ -1,0 +1,80 @@
+{
+  "generation_throughput_tps": {
+    "max": 187.55555555555554,
+    "mean": 97.74545454545454,
+    "min": 0.0,
+    "samples": 22
+  },
+  "gpu_fb_used_mib": {
+    "max": 20212.0,
+    "mean": 20212.0,
+    "min": 20212.0,
+    "samples": 22
+  },
+  "gpu_power_w": {
+    "max": 150.457,
+    "mean": 130.95581818181816,
+    "min": 97.298,
+    "samples": 22
+  },
+  "gpu_temp_c": {
+    "max": 70.0,
+    "mean": 67.0909090909091,
+    "min": 64.0,
+    "samples": 22
+  },
+  "gpu_util_pct": {
+    "max": 97.0,
+    "mean": 44.09090909090909,
+    "min": 0.0,
+    "samples": 22
+  },
+  "kv_cache_usage_pct": {
+    "max": 13.524877365101606,
+    "mean": 6.348346817863287,
+    "min": 0.07007708479327412,
+    "samples": 22
+  },
+  "p95_e2e_ms": {
+    "max": 14750.0,
+    "mean": 13904.379111842105,
+    "min": 4875.0,
+    "samples": 16
+  },
+  "p95_queue_ms": {
+    "max": 9750.0,
+    "mean": 8930.004111842105,
+    "min": 285.0,
+    "samples": 16
+  },
+  "p95_tpot_ms": {
+    "max": 48.95853658536585,
+    "mean": 48.917114676607696,
+    "min": 48.78582202111615,
+    "samples": 16
+  },
+  "p95_ttft_ms": {
+    "max": 7375.0,
+    "mean": 6890.920115041209,
+    "min": 483.9285714285714,
+    "samples": 16
+  },
+  "prompt_throughput_tps": {
+    "max": 408.9555555555555,
+    "mean": 195.0939393939394,
+    "min": 0.0,
+    "samples": 22
+  },
+  "running_requests": {
+    "max": 8.0,
+    "mean": 4.318181818181818,
+    "min": 0.0,
+    "samples": 22
+  },
+  "waiting_requests": {
+    "max": 8.0,
+    "mean": 4.090909090909091,
+    "min": 0.0,
+    "samples": 22
+  }
+}

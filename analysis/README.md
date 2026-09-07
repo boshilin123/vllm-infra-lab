@@ -26,5 +26,15 @@ python analysis/generate_charts.py
 
 后续图表：
 
-- waiting requests、KV Cache 与 GPU 利用率时间线；
 - 扩缩容期间副本数、P95 和错误率时间线。
+
+## Phase 3 统一时间线
+
+先用 `export_prometheus_timeline.py` 导出 Prometheus/DCGM 原始 matrix、统一 CSV、元数据和汇总，再生成确定性 SVG：
+
+```bash
+python analysis/generate_timeline_chart.py \
+  --experiment-dir results/YYYY-MM-DD/<experiment-id>
+```
+
+图表分开呈现 scheduler running/waiting、Prompt/Generation 记账速率、GPU/KV Cache 和服务端 P95 histogram，避免把不同单位叠到同一纵轴。Prompt rate 与 histogram 均使用 1 分钟窗口；其中 Prompt Token 在当前 vLLM V1 中于首 Token 附近一次性记账，服务端 P95 则是 Prometheus histogram bucket 估算值，均不能当作客户端逐请求精确分位数。

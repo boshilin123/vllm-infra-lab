@@ -1,0 +1,32 @@
+experiment_id: 20260907-104314-observability-burst-c16-mns8
+created_at: '2026-09-07T10:43:14+08:00'
+git_commit: fef9d1358f79b70f76dc2e2197646daa5f62452a
+client_hostname: qhvgpu1
+client_python: /home/qhadmin/boshi/vllm/envs/vllm-qwen3/bin/python
+client_vllm_version: 0.9.1
+base_url: http://127.0.0.1:28080
+model: Qwen3-8B
+tokenizer: /home/qhadmin/boshi/vllm/models/Qwen3-8B
+server:
+  node: qhvgpu1
+  gpu_physical_index: 1
+  gpu_uuid: GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116
+  engine:
+    max_num_seqs: 8
+    max_model_len: 4096
+    gpu_memory_utilization: 0.85
+scenario_file: benchmark/scenarios/observability-burst.yaml
+scenario:
+  name: observability-burst
+  description: One controlled c16 burst for Prometheus and DCGM timeline correlation.
+  prompt_tokens: 256
+  output_tokens: 128
+  concurrency:
+  - 16
+  warmup_requests: 10
+  measured_requests: 240
+  repeats: 1
+  seed_offset: 400000
+selected_concurrency: 16
+seed_policy: scenario_offset=400000; offset=scenario_offset+(concurrency-1)*1000;
+  warmup=10000+offset+repeat; measured=42+offset+repeat-1

@@ -92,13 +92,15 @@ def experiment_window(experiment_dir: Path, buffer_seconds: int) -> tuple[float,
     ends: list[datetime] = []
     for path in repeat_paths:
         repeat = load_json(path)
-        repeat_start = parse_benchmark_datetime(
+        # vLLM bench writes ``date`` when it finishes and serializes the result,
+        # so this is the repeat end timestamp rather than its start timestamp.
+        repeat_end = parse_benchmark_datetime(
             str(repeat["date"]), experiment_timezone
         )
         duration = float(repeat["duration"])
         if not math.isfinite(duration) or duration <= 0:
             raise ValueError(f"{path.name}.duration 无效: {duration!r}")
-        ends.append(repeat_start + timedelta(seconds=duration))
+        ends.append(repeat_end)
     buffer = timedelta(seconds=buffer_seconds)
     return (start - buffer).timestamp(), (max(ends) + buffer).timestamp()
 

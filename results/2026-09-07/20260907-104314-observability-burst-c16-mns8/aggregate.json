@@ -1,0 +1,233 @@
+{
+  "validation": "passed",
+  "experiment_id": "20260907-104314-observability-burst-c16-mns8",
+  "git_commit": "fef9d1358f79b70f76dc2e2197646daa5f62452a",
+  "model": "Qwen3-8B",
+  "server": {
+    "node": "qhvgpu1",
+    "gpu_physical_index": 1,
+    "gpu_uuid": "GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116",
+    "engine": {
+      "max_num_seqs": 8,
+      "max_model_len": 4096,
+      "gpu_memory_utilization": 0.85
+    }
+  },
+  "scenario": {
+    "name": "observability-burst",
+    "description": "One controlled c16 burst for Prometheus and DCGM timeline correlation.",
+    "prompt_tokens": 256,
+    "output_tokens": 128,
+    "concurrency": [
+      16
+    ],
+    "warmup_requests": 10,
+    "measured_requests": 240,
+    "repeats": 1,
+    "seed_offset": 400000
+  },
+  "selected_concurrency": 16,
+  "repeat_files": [
+    "repeat-01.json"
+  ],
+  "metrics": {
+    "duration": {
+      "metric": "duration",
+      "unit": "s",
+      "repeat_count": 1,
+      "mean": 164.39438566565514,
+      "median": 164.39438566565514,
+      "min": 164.39438566565514,
+      "max": 164.39438566565514,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "request_throughput": {
+      "metric": "request_throughput",
+      "unit": "req/s",
+      "repeat_count": 1,
+      "mean": 1.4599038709759309,
+      "median": 1.4599038709759309,
+      "min": 1.4599038709759309,
+      "max": 1.4599038709759309,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "output_throughput": {
+      "metric": "output_throughput",
+      "unit": "tok/s",
+      "repeat_count": 1,
+      "mean": 186.86769548491915,
+      "median": 186.86769548491915,
+      "min": 186.86769548491915,
+      "max": 186.86769548491915,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "total_token_throughput": {
+      "metric": "total_token_throughput",
+      "unit": "tok/s",
+      "repeat_count": 1,
+      "mean": 560.6030864547574,
+      "median": 560.6030864547574,
+      "min": 560.6030864547574,
+      "max": 560.6030864547574,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "mean_ttft_ms": {
+      "metric": "mean_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 5691.832927831759,
+      "median": 5691.832927831759,
+      "min": 5691.832927831759,
+      "max": 5691.832927831759,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p50_ttft_ms": {
+      "metric": "p50_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 5913.987558335066,
+      "median": 5913.987558335066,
+      "min": 5913.987558335066,
+      "max": 5913.987558335066,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p95_ttft_ms": {
+      "metric": "p95_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 5934.104093536735,
+      "median": 5934.104093536735,
+      "min": 5934.104093536735,
+      "max": 5934.104093536735,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p99_ttft_ms": {
+      "metric": "p99_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 5963.381561264396,
+      "median": 5963.381561264396,
+      "min": 5963.381561264396,
+      "max": 5963.381561264396,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "mean_tpot_ms": {
+      "metric": "mean_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 40.03845054944709,
+      "median": 40.03845054944709,
+      "min": 40.03845054944709,
+      "max": 40.03845054944709,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p50_tpot_ms": {
+      "metric": "p50_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 39.724863273656275,
+      "median": 39.724863273656275,
+      "min": 39.724863273656275,
+      "max": 39.724863273656275,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p95_tpot_ms": {
+      "metric": "p95_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 42.425242259981125,
+      "median": 42.425242259981125,
+      "min": 42.425242259981125,
+      "max": 42.425242259981125,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p99_tpot_ms": {
+      "metric": "p99_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 42.53543332395122,
+      "median": 42.53543332395122,
+      "min": 42.53543332395122,
+      "max": 42.53543332395122,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "mean_itl_ms": {
+      "metric": "mean_itl_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 40.03845267242256,
+      "median": 40.03845267242256,
+      "min": 40.03845267242256,
+      "max": 40.03845267242256,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p95_itl_ms": {
+      "metric": "p95_itl_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 40.710218995809555,
+      "median": 40.710218995809555,
+      "min": 40.710218995809555,
+      "max": 40.710218995809555,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "mean_e2el_ms": {
+      "metric": "mean_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 10776.71614761154,
+      "median": 10776.71614761154,
+      "min": 10776.71614761154,
+      "max": 10776.71614761154,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p50_e2el_ms": {
+      "metric": "p50_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 10961.21335402131,
+      "median": 10961.21335402131,
+      "min": 10961.21335402131,
+      "max": 10961.21335402131,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p95_e2el_ms": {
+      "metric": "p95_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 10983.894614875317,
+      "median": 10983.894614875317,
+      "min": 10983.894614875317,
+      "max": 10983.894614875317,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    },
+    "p99_e2el_ms": {
+      "metric": "p99_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 1,
+      "mean": 11016.364889219403,
+      "median": 11016.364889219403,
+      "min": 11016.364889219403,
+      "max": 11016.364889219403,
+      "stdev": 0.0,
+      "cv_percent": 0.0
+    }
+  }
+}
