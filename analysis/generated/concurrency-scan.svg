@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="780" viewBox="0 0 1280 780" role="img">
+<style>
+text{font-family:Inter,Arial,'Noto Sans CJK SC',sans-serif;fill:#172033}
+.title{font-size:26px;font-weight:700}
+.subtitle{font-size:14px;fill:#64748b}
+.panel{font-size:16px;font-weight:700}
+.axis{font-size:12px;fill:#64748b}
+.value{font-size:12px;font-weight:600}
+.note{font-size:12px;fill:#64748b}
+</style>
+<rect width="1280" height="780" fill="#ffffff"/>
+<text x="55.0" y="45.0" class="title" text-anchor="start">Short workload concurrency scan</text>
+<text x="55.0" y="70.0" class="subtitle" text-anchor="start">Qwen3-8B BF16 · 256/128 tokens · one A10 · max-num-seqs=8 · median of 3 repeats · historical GPU 3</text>
+<text x="85.0" y="116.0" class="panel" text-anchor="start">Output throughput (tok/s)</text>
+<line x1="85.0" y1="350.0" x2="585.0" y2="350.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="354.0" class="axis" text-anchor="end">0</text>
+<line x1="85.0" y1="295.0" x2="585.0" y2="295.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="299.0" class="axis" text-anchor="end">125</text>
+<line x1="85.0" y1="240.0" x2="585.0" y2="240.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="244.0" class="axis" text-anchor="end">250</text>
+<line x1="85.0" y1="185.0" x2="585.0" y2="185.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="189.0" class="axis" text-anchor="end">375</text>
+<line x1="85.0" y1="130.0" x2="585.0" y2="130.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="134.0" class="axis" text-anchor="end">500</text>
+<text x="85.0" y="372.0" class="axis" text-anchor="middle">1</text>
+<text x="210.0" y="372.0" class="axis" text-anchor="middle">2</text>
+<text x="335.0" y="372.0" class="axis" text-anchor="middle">4</text>
+<text x="460.0" y="372.0" class="axis" text-anchor="middle">8</text>
+<text x="585.0" y="372.0" class="axis" text-anchor="middle">16</text>
+<polyline points="85.0,337.5 210.0,327.5 335.0,306.7 460.0,271.3 585.0,271.1" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="85.0" cy="337.5" r="5" fill="#2563eb"/>
+<circle cx="210.0" cy="327.5" r="5" fill="#2563eb"/>
+<circle cx="335.0" cy="306.7" r="5" fill="#2563eb"/>
+<circle cx="460.0" cy="271.3" r="5" fill="#2563eb"/>
+<circle cx="585.0" cy="271.1" r="5" fill="#2563eb"/>
+<text x="85.0" y="327.5" class="value" text-anchor="middle">28</text>
+<text x="210.0" y="317.5" class="value" text-anchor="middle">51</text>
+<text x="335.0" y="296.7" class="value" text-anchor="middle">98</text>
+<text x="460.0" y="261.3" class="value" text-anchor="middle">179</text>
+<text x="585.0" y="261.1" class="value" text-anchor="middle">179</text>
+<text x="685.0" y="116.0" class="panel" text-anchor="start">Request throughput (req/s)</text>
+<line x1="685.0" y1="350.0" x2="1185.0" y2="350.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="354.0" class="axis" text-anchor="end">0.00</text>
+<line x1="685.0" y1="295.0" x2="1185.0" y2="295.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="299.0" class="axis" text-anchor="end">0.50</text>
+<line x1="685.0" y1="240.0" x2="1185.0" y2="240.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="244.0" class="axis" text-anchor="end">1.00</text>
+<line x1="685.0" y1="185.0" x2="1185.0" y2="185.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="189.0" class="axis" text-anchor="end">1.50</text>
+<line x1="685.0" y1="130.0" x2="1185.0" y2="130.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="134.0" class="axis" text-anchor="end">2.00</text>
+<text x="685.0" y="372.0" class="axis" text-anchor="middle">1</text>
+<text x="810.0" y="372.0" class="axis" text-anchor="middle">2</text>
+<text x="935.0" y="372.0" class="axis" text-anchor="middle">4</text>
+<text x="1060.0" y="372.0" class="axis" text-anchor="middle">8</text>
+<text x="1185.0" y="372.0" class="axis" text-anchor="middle">16</text>
+<polyline points="685.0,325.6 810.0,306.1 935.0,265.4 1060.0,196.3 1185.0,195.9" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="685.0" cy="325.6" r="5" fill="#2563eb"/>
+<circle cx="810.0" cy="306.1" r="5" fill="#2563eb"/>
+<circle cx="935.0" cy="265.4" r="5" fill="#2563eb"/>
+<circle cx="1060.0" cy="196.3" r="5" fill="#2563eb"/>
+<circle cx="1185.0" cy="195.9" r="5" fill="#2563eb"/>
+<text x="685.0" y="315.6" class="value" text-anchor="middle">0.22</text>
+<text x="810.0" y="296.1" class="value" text-anchor="middle">0.40</text>
+<text x="935.0" y="255.4" class="value" text-anchor="middle">0.77</text>
+<text x="1060.0" y="186.3" class="value" text-anchor="middle">1.40</text>
+<text x="1185.0" y="185.9" class="value" text-anchor="middle">1.40</text>
+<text x="85.0" y="441.0" class="panel" text-anchor="start">P95 TTFT (ms)</text>
+<line x1="85.0" y1="675.0" x2="585.0" y2="675.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="679.0" class="axis" text-anchor="end">0</text>
+<line x1="85.0" y1="620.0" x2="585.0" y2="620.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="624.0" class="axis" text-anchor="end">2500</text>
+<line x1="85.0" y1="565.0" x2="585.0" y2="565.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="569.0" class="axis" text-anchor="end">5000</text>
+<line x1="85.0" y1="510.0" x2="585.0" y2="510.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="514.0" class="axis" text-anchor="end">7500</text>
+<line x1="85.0" y1="455.0" x2="585.0" y2="455.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="459.0" class="axis" text-anchor="end">10000</text>
+<text x="85.0" y="697.0" class="axis" text-anchor="middle">1</text>
+<text x="210.0" y="697.0" class="axis" text-anchor="middle">2</text>
+<text x="335.0" y="697.0" class="axis" text-anchor="middle">4</text>
+<text x="460.0" y="697.0" class="axis" text-anchor="middle">8</text>
+<text x="585.0" y="697.0" class="axis" text-anchor="middle">16</text>
+<polyline points="85.0,673.3 210.0,671.3 335.0,668.7 460.0,663.5 585.0,542.7" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="85.0" cy="673.3" r="5" fill="#2563eb"/>
+<circle cx="210.0" cy="671.3" r="5" fill="#2563eb"/>
+<circle cx="335.0" cy="668.7" r="5" fill="#2563eb"/>
+<circle cx="460.0" cy="663.5" r="5" fill="#2563eb"/>
+<circle cx="585.0" cy="542.7" r="5" fill="#2563eb"/>
+<text x="85.0" y="663.3" class="value" text-anchor="middle">78</text>
+<text x="210.0" y="661.3" class="value" text-anchor="middle">169</text>
+<text x="335.0" y="658.7" class="value" text-anchor="middle">288</text>
+<text x="460.0" y="653.5" class="value" text-anchor="middle">525</text>
+<text x="585.0" y="532.7" class="value" text-anchor="middle">6016</text>
+<line x1="85.0" y1="661.8" x2="585.0" y2="661.8" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="88.0" y="655.8" class="axis" text-anchor="start" fill="#dc2626">Short SLO 600 ms</text>
+<text x="685.0" y="441.0" class="panel" text-anchor="start">P95 E2E (ms)</text>
+<line x1="685.0" y1="675.0" x2="1185.0" y2="675.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="679.0" class="axis" text-anchor="end">0</text>
+<line x1="685.0" y1="620.0" x2="1185.0" y2="620.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="624.0" class="axis" text-anchor="end">5000</text>
+<line x1="685.0" y1="565.0" x2="1185.0" y2="565.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="569.0" class="axis" text-anchor="end">10000</text>
+<line x1="685.0" y1="510.0" x2="1185.0" y2="510.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="514.0" class="axis" text-anchor="end">15000</text>
+<line x1="685.0" y1="455.0" x2="1185.0" y2="455.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="459.0" class="axis" text-anchor="end">20000</text>
+<text x="685.0" y="697.0" class="axis" text-anchor="middle">1</text>
+<text x="810.0" y="697.0" class="axis" text-anchor="middle">2</text>
+<text x="935.0" y="697.0" class="axis" text-anchor="middle">4</text>
+<text x="1060.0" y="697.0" class="axis" text-anchor="middle">8</text>
+<text x="1185.0" y="697.0" class="axis" text-anchor="middle">16</text>
+<polyline points="685.0,625.2 810.0,619.7 935.0,617.6 1060.0,613.9 1185.0,553.0" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="685.0" cy="625.2" r="5" fill="#2563eb"/>
+<circle cx="810.0" cy="619.7" r="5" fill="#2563eb"/>
+<circle cx="935.0" cy="617.6" r="5" fill="#2563eb"/>
+<circle cx="1060.0" cy="613.9" r="5" fill="#2563eb"/>
+<circle cx="1185.0" cy="553.0" r="5" fill="#2563eb"/>
+<text x="685.0" y="615.2" class="value" text-anchor="middle">4528</text>
+<text x="810.0" y="609.7" class="value" text-anchor="middle">5026</text>
+<text x="935.0" y="607.6" class="value" text-anchor="middle">5216</text>
+<text x="1060.0" y="603.9" class="value" text-anchor="middle">5554</text>
+<text x="1185.0" y="543.0" class="value" text-anchor="middle">11095</text>
+<line x1="685.0" y1="609.0" x2="1185.0" y2="609.0" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="688.0" y="603.0" class="axis" text-anchor="start" fill="#dc2626">Short SLO 6000 ms</text>
+<text x="640.0" y="765.0" class="note" text-anchor="middle">Concurrency</text>
+</svg>

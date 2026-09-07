@@ -134,13 +134,13 @@ GitHub 的提示“does not provide shell access”是正常现象，表示 SSH 
 
 曾遇到 `.git/config: Permission denied`，原因是此前用 `sudo` 造成仓库文件所有权不一致。修复所有权后，以普通用户执行 Git 操作。后续不要用 `sudo git ...`。
 
-截至 Prefill/Decode 对照正式执行前，远端最新提交为：
+截至 Phase 2 性能图生成前，远端最新提交为：
 
 ```text
-da604fe bench: prepare prefill and decode comparison
+c3524fb data: add prefill and decode benchmark comparison
 ```
 
-Prefill/Decode 场景、独立随机种子和 Long SLO v1 已推送。四组单卡正式结果及报告已生成，当前等待项目本人检查和提交。
+四组单卡 Prefill/Decode 正式结果、报告和复盘均已推送。当前本地正在生成可复现性能图，尚未提交。
 
 ### 3.2 Kubernetes 集群
 
@@ -649,6 +649,7 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 24. 单变量结果验证：Prompt 从 256 增至 1024 使 P95 TTFT 上升约 201%；输出从 128 增至 256 使 P95 E2E 增加约 5.097 秒而 P95 TPOT 基本不变；组合场景 KV Cache 峰值约 44.36%。
 25. 实验结束后 GPU 回到空闲、vLLM metrics 仍正常返回；Agent 只关闭本项目的 benchmark、monitor 和 port-forward tmux，会话列表确认公司 `qwen3-tts-stage3` 未受影响。
 26. 最终审计确认 Pod `Ready=true`、Running、0 次重启，近两小时严格系统故障、HTTP 4xx/5xx 和 namespace Warning Event 均为 0。宽泛搜索 `error|exception|traceback` 曾命中数百条随机 Prompt 文本，并非服务故障；同时发现正确 Pod 标签是 `app.kubernetes.io/name=qwen3-8b`，旧 selector `app=qwen3-8b` 会返回空表。
+27. 用户检查并提交四组结果为 `c3524fb`；Agent 随后增加纯 Python 标准库 SVG 生成器，直接读取聚合中位数并验证场景身份，生成 Short 并发扫描、mns8/16 参数对照和 Prefill/Decode 四负载对照三张图。连续两次生成的 SHA256 一致，SVG 通过 XML 解析并完成 PNG 转换后的视觉检查。
 
 ### 8.5 关键 Git 里程碑
 
@@ -674,8 +675,9 @@ TTFT 虽显著改善但仍未通过 600 ms。启动日志显示 Chunked Prefill 
 | `5776be0` | 增加 mns16 参数实验结果 | 固化 70.36%吞吐收益和仍未通过 TTFT/E2E SLO 的边界 |
 | `cac1a7a` | 恢复单副本 mns8 基线 | 固化 Phase 0–3 单卡默认值和最多两卡的共享环境安全边界 |
 | `da604fe` | 准备 Prefill/Decode 对照 | 固化四场景、独立种子、事前假设和 Long SLO v1 |
+| `c3524fb` | 增加 Prefill/Decode 正式结果 | 固化 840/840 成功请求、Long SLO 结果和单变量结论 |
 
-以上条目均已提交到 `origin/main`。四组正式数据和实验 README 当前尚未提交，不能把它们写成远端已固化证据。
+以上条目均已提交到 `origin/main`。性能绘图脚本、三张 SVG 和相关文档更新当前尚未提交。
 
 ## 9. 已遇到的故障与面试价值
 
@@ -844,7 +846,7 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 | --- | --- | --- | --- |
 | Phase 0 环境与安全边界 | 已完成 | 软硬件、模型、共享工作负载、Git 认证盘点 | 每次实验前刷新动态资源快照 |
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
-| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16、Prefill/Decode/组合长上下文数据 | 检查并提交四组结果，生成性能图表 |
+| Phase 2 基准与参数实验 | 进行中 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16、Prefill/Decode/组合长上下文、三张客户端性能图 | 检查并提交图表；GPU/KV/waiting 时序图与 Phase 3 统一采集 |
 | Phase 3 可观测性 | 进行中 | `/metrics`、ServiceMonitor、Prometheus 查询 | Grafana Dashboard、统一时间线、故障场景 |
 | Phase 4 多副本与弹性 | 计划中 | 架构和指标方向 | 第二张可用 GPU、共享模型、Adapter/KEDA、HPA 与突发流量实验 |
 
@@ -864,7 +866,9 @@ Phase 2 和 Phase 3 可以交叉推进：当前 ServiceMonitor 已完成，但 D
 
 第六步已完成：固定并发 8 和 mns8，在当前 Pod/GPU 的相邻时间窗口完成 `256/128` 校准、`1024/128` Prefill 对照、`256/256` Decode 对照和 `1024/256` 组合长上下文。四组共 840/840 个正式请求成功，三种长负载全部通过预注册的 P95 Long SLO；原始数据、聚合和 README 当前等待项目本人检查提交。
 
-第七步正在进行：最终 Pod 与日志审计已通过；待项目本人检查并提交四组结果后，从已提交的并发扫描、mns 参数实验和四场景数据生成可复现性能图表。完成图表后 Phase 2 才进入收尾。
+第七步已完成实现：最终 Pod 与日志审计通过，四组结果已提交为 `c3524fb`；绘图脚本从已提交的并发扫描、mns 参数实验和四场景聚合数据生成三张确定性 SVG，已通过语法、XML、重复生成和视觉检查，当前等待项目本人检查提交。
+
+Phase 2 尚保留一项边界：原计划包含 GPU 指标图表，但此前三秒轮询结果没有完整保存为时序文件，不能事后拼造。下一步进入 Phase 3，使用已有 Prometheus/DCGM 持久化采集一次代表性负载，把 running、waiting、KV Cache 和 GPU 指标对齐到统一时间线；完成后再将 Phase 2/3 对应交付物一起闭环。
 
 后续顺序保持为：完成 Phase 2 的 Long Context 和性能图表；完成 Phase 3 的 Grafana Dashboard、统一时间线和已有故障证据整理；最后才进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
 

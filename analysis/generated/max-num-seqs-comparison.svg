@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img">
+<style>
+text{font-family:Inter,Arial,'Noto Sans CJK SC',sans-serif;fill:#172033}
+.title{font-size:26px;font-weight:700}
+.subtitle{font-size:14px;fill:#64748b}
+.panel{font-size:16px;font-weight:700}
+.axis{font-size:12px;fill:#64748b}
+.value{font-size:12px;font-weight:600}
+.note{font-size:12px;fill:#64748b}
+</style>
+<rect width="1280" height="800" fill="#ffffff"/>
+<text x="55.0" y="45.0" class="title" text-anchor="start">max-num-seqs parameter comparison</text>
+<text x="55.0" y="70.0" class="subtitle" text-anchor="start">Qwen3-8B BF16 · c16 · 256/128 tokens · one A10 · median of 3 repeats · historical GPU 3</text>
+<text x="85.0" y="116.0" class="panel" text-anchor="start">Output throughput (tok/s)</text>
+<line x1="85.0" y1="350.0" x2="585.0" y2="350.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="354.0" class="axis" text-anchor="end">0</text>
+<line x1="85.0" y1="295.0" x2="585.0" y2="295.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="299.0" class="axis" text-anchor="end">125</text>
+<line x1="85.0" y1="240.0" x2="585.0" y2="240.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="244.0" class="axis" text-anchor="end">250</text>
+<line x1="85.0" y1="185.0" x2="585.0" y2="185.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="189.0" class="axis" text-anchor="end">375</text>
+<line x1="85.0" y1="130.0" x2="585.0" y2="130.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="134.0" class="axis" text-anchor="end">500</text>
+<rect x="140.0" y="271.1" width="140.0" height="78.9" rx="4" fill="#2563eb" opacity="1"/>
+<text x="210.0" y="264.1" class="value" text-anchor="middle">179</text>
+<text x="210.0" y="370.0" class="axis" text-anchor="middle">mns8</text>
+<rect x="390.0" y="215.6" width="140.0" height="134.4" rx="4" fill="#0d9488" opacity="1"/>
+<text x="460.0" y="208.6" class="value" text-anchor="middle">305</text>
+<text x="460.0" y="370.0" class="axis" text-anchor="middle">mns16</text>
+<text x="685.0" y="116.0" class="panel" text-anchor="start">P95 TTFT (ms)</text>
+<line x1="685.0" y1="350.0" x2="1185.0" y2="350.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="354.0" class="axis" text-anchor="end">0</text>
+<line x1="685.0" y1="295.0" x2="1185.0" y2="295.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="299.0" class="axis" text-anchor="end">2500</text>
+<line x1="685.0" y1="240.0" x2="1185.0" y2="240.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="244.0" class="axis" text-anchor="end">5000</text>
+<line x1="685.0" y1="185.0" x2="1185.0" y2="185.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="189.0" class="axis" text-anchor="end">7500</text>
+<line x1="685.0" y1="130.0" x2="1185.0" y2="130.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="134.0" class="axis" text-anchor="end">10000</text>
+<rect x="740.0" y="217.7" width="140.0" height="132.3" rx="4" fill="#2563eb" opacity="1"/>
+<text x="810.0" y="210.7" class="value" text-anchor="middle">6016</text>
+<text x="810.0" y="370.0" class="axis" text-anchor="middle">mns8</text>
+<rect x="990.0" y="328.5" width="140.0" height="21.5" rx="4" fill="#0d9488" opacity="1"/>
+<text x="1060.0" y="321.5" class="value" text-anchor="middle">977</text>
+<text x="1060.0" y="370.0" class="axis" text-anchor="middle">mns16</text>
+<line x1="685.0" y1="336.8" x2="1185.0" y2="336.8" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="688.0" y="330.8" class="axis" text-anchor="start" fill="#dc2626">Short SLO 600 ms</text>
+<text x="85.0" y="451.0" class="panel" text-anchor="start">P95 TPOT (ms)</text>
+<line x1="85.0" y1="685.0" x2="585.0" y2="685.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="689.0" class="axis" text-anchor="end">0.0</text>
+<line x1="85.0" y1="630.0" x2="585.0" y2="630.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="634.0" class="axis" text-anchor="end">25.0</text>
+<line x1="85.0" y1="575.0" x2="585.0" y2="575.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="579.0" class="axis" text-anchor="end">50.0</text>
+<line x1="85.0" y1="520.0" x2="585.0" y2="520.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="524.0" class="axis" text-anchor="end">75.0</text>
+<line x1="85.0" y1="465.0" x2="585.0" y2="465.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="469.0" class="axis" text-anchor="end">100.0</text>
+<rect x="140.0" y="591.1" width="140.0" height="93.9" rx="4" fill="#2563eb" opacity="1"/>
+<text x="210.0" y="584.1" class="value" text-anchor="middle">42.7</text>
+<text x="210.0" y="705.0" class="axis" text-anchor="middle">mns8</text>
+<rect x="390.0" y="582.1" width="140.0" height="102.9" rx="4" fill="#0d9488" opacity="1"/>
+<text x="460.0" y="575.1" class="value" text-anchor="middle">46.8</text>
+<text x="460.0" y="705.0" class="axis" text-anchor="middle">mns16</text>
+<line x1="85.0" y1="575.0" x2="585.0" y2="575.0" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="88.0" y="569.0" class="axis" text-anchor="start" fill="#dc2626">Short SLO 50 ms</text>
+<text x="685.0" y="451.0" class="panel" text-anchor="start">P95 E2E (ms)</text>
+<line x1="685.0" y1="685.0" x2="1185.0" y2="685.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="689.0" class="axis" text-anchor="end">0</text>
+<line x1="685.0" y1="630.0" x2="1185.0" y2="630.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="634.0" class="axis" text-anchor="end">5000</text>
+<line x1="685.0" y1="575.0" x2="1185.0" y2="575.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="579.0" class="axis" text-anchor="end">10000</text>
+<line x1="685.0" y1="520.0" x2="1185.0" y2="520.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="524.0" class="axis" text-anchor="end">15000</text>
+<line x1="685.0" y1="465.0" x2="1185.0" y2="465.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="469.0" class="axis" text-anchor="end">20000</text>
+<rect x="740.0" y="563.0" width="140.0" height="122.0" rx="4" fill="#2563eb" opacity="1"/>
+<text x="810.0" y="556.0" class="value" text-anchor="middle">11095</text>
+<text x="810.0" y="705.0" class="axis" text-anchor="middle">mns8</text>
+<rect x="990.0" y="617.3" width="140.0" height="67.7" rx="4" fill="#0d9488" opacity="1"/>
+<text x="1060.0" y="610.3" class="value" text-anchor="middle">6152</text>
+<text x="1060.0" y="705.0" class="axis" text-anchor="middle">mns16</text>
+<line x1="685.0" y1="619.0" x2="1185.0" y2="619.0" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="688.0" y="613.0" class="axis" text-anchor="start" fill="#dc2626">Short SLO 6000 ms</text>
+<text x="640.0" y="786.0" class="note" text-anchor="middle">mns16 improves throughput and queueing delay, but P95 TTFT and E2E still miss the pre-registered Short SLO.</text>
+</svg>

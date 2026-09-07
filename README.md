@@ -64,7 +64,21 @@ flowchart LR
 - vLLM 0.9.1、PyTorch 2.7.0+cu126。
 - 集群已有 Prometheus、Grafana、ServiceMonitor CRD 与 DCGM Exporter。
 
-以上仅描述已盘点的环境；部署清单、实验结果和性能结论将在实际完成后更新。
+以上环境已经完成单副本部署、Prometheus 接入和 Phase 2 核心基准验证；动态 GPU 分配与共享负载仍以每次实验的 metadata 和项目日志为准。
+
+## 已验证的性能结论
+
+所有数据均保留三轮原始 JSON、聚合结果与实验 README；图表由 `analysis/generate_charts.py` 直接读取 `aggregate.json` 生成。
+
+- 在单张 A10、Qwen3-8B BF16、256/128 Token、`max-num-seqs=8` 下，并发从 8 增至 16 时输出吞吐仅提高 0.27%，P95 TTFT 从 525 ms 恶化至 6.02 s，定位到服务端运行序列上限与排队拐点。
+- 固定客户端并发 16，将 `max-num-seqs` 从 8 提至 16 后，输出吞吐从 179.29 提高到 305.43 tok/s（+70.36%），P95 E2E 从 11.10 s 降到 6.15 s；但 TTFT/E2E 仍未通过预注册 Short SLO。
+- 同卡 Prefill/Decode 对照中，Prompt 从 256 增至 1024 使 P95 TTFT 上升约 201%；输出从 128 增至 256 使 P95 E2E 增加约 5.10 s，而 P95 TPOT 基本不变。
+
+![Short 并发扫描](analysis/generated/concurrency-scan.svg)
+
+![max-num-seqs 参数对照](analysis/generated/max-num-seqs-comparison.svg)
+
+![Prefill 与 Decode 对照](analysis/generated/workload-comparison.svg)
 
 ## 仓库结构
 
@@ -76,7 +90,7 @@ vllm-infra-lab/
 │   ├── run_benchmark.py # 压测入口（Phase 2 实现）
 │   └── aggregate_results.py
 ├── monitoring/          # ServiceMonitor、PrometheusRule 与 Grafana Dashboard
-├── analysis/            # 指标关联与绘图脚本
+├── analysis/            # 可复现性能图与后续时序指标关联
 ├── scripts/             # 部署、冒烟测试与环境元数据采集
 ├── results/             # 经脱敏的原始结果、汇总数据和图表
 └── docs/                # 架构、实验方法、Runbook 和性能报告
@@ -88,9 +102,9 @@ vllm-infra-lab/
 
 - [x] 盘点硬件、集群、模型和现有运行环境
 - [x] 建立可重复部署的单副本 vLLM 基线
-- [ ] 完成并发与请求长度基准测试（Short 并发 1/2/4/8/16 扫描已完成，请求长度实验待完成）
+- [x] 完成并发与请求长度基准测试（Short c1/2/4/8/16 与 Prefill/Decode/组合长上下文对照）
 - [ ] 完成 vLLM 与 GPU 可观测性（ServiceMonitor 已接入，Dashboard 待完成）
-- [ ] 完成关键引擎参数对照实验（`max-num-seqs` 8/16 已完成，其他参数待测）
+- [x] 完成首个关键引擎参数对照实验（`max-num-seqs` 8/16）
 - [ ] 完成多副本与弹性扩缩容实验
 - [ ] 固化结果、复现步骤与简历数据
 

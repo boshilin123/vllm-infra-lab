@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" role="img">
+<style>
+text{font-family:Inter,Arial,'Noto Sans CJK SC',sans-serif;fill:#172033}
+.title{font-size:26px;font-weight:700}
+.subtitle{font-size:14px;fill:#64748b}
+.panel{font-size:16px;font-weight:700}
+.axis{font-size:12px;fill:#64748b}
+.value{font-size:12px;font-weight:600}
+.note{font-size:12px;fill:#64748b}
+</style>
+<rect width="1280" height="800" fill="#ffffff"/>
+<text x="55.0" y="45.0" class="title" text-anchor="start">Prefill and Decode workload comparison</text>
+<text x="55.0" y="70.0" class="subtitle" text-anchor="start">Qwen3-8B BF16 · c8/mns8 · one A10 · median of 3 repeats · current GPU 1 · labels are prompt/output tokens</text>
+<text x="85.0" y="116.0" class="panel" text-anchor="start">Output throughput (tok/s)</text>
+<line x1="85.0" y1="350.0" x2="585.0" y2="350.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="354.0" class="axis" text-anchor="end">0</text>
+<line x1="85.0" y1="295.0" x2="585.0" y2="295.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="299.0" class="axis" text-anchor="end">125</text>
+<line x1="85.0" y1="240.0" x2="585.0" y2="240.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="244.0" class="axis" text-anchor="end">250</text>
+<line x1="85.0" y1="185.0" x2="585.0" y2="185.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="189.0" class="axis" text-anchor="end">375</text>
+<line x1="85.0" y1="130.0" x2="585.0" y2="130.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="134.0" class="axis" text-anchor="end">500</text>
+<rect x="112.5" y="270.5" width="70.0" height="79.5" rx="4" fill="#2563eb" opacity="1"/>
+<text x="147.5" y="263.5" class="value" text-anchor="middle">181</text>
+<text x="147.5" y="370.0" class="axis" text-anchor="middle">Short</text>
+<text x="147.5" y="384.0" class="axis" text-anchor="middle">256/128</text>
+<rect x="237.5" y="288.8" width="70.0" height="61.2" rx="4" fill="#0d9488" opacity="1"/>
+<text x="272.5" y="281.8" class="value" text-anchor="middle">139</text>
+<text x="272.5" y="370.0" class="axis" text-anchor="middle">Prefill</text>
+<text x="272.5" y="384.0" class="axis" text-anchor="middle">1024/128</text>
+<rect x="362.5" y="269.6" width="70.0" height="80.4" rx="4" fill="#d97706" opacity="1"/>
+<text x="397.5" y="262.6" class="value" text-anchor="middle">183</text>
+<text x="397.5" y="370.0" class="axis" text-anchor="middle">Decode</text>
+<text x="397.5" y="384.0" class="axis" text-anchor="middle">256/256</text>
+<rect x="487.5" y="280.5" width="70.0" height="69.5" rx="4" fill="#7c3aed" opacity="1"/>
+<text x="522.5" y="273.5" class="value" text-anchor="middle">158</text>
+<text x="522.5" y="370.0" class="axis" text-anchor="middle">Combined</text>
+<text x="522.5" y="384.0" class="axis" text-anchor="middle">1024/256</text>
+<text x="685.0" y="116.0" class="panel" text-anchor="start">P95 TTFT (ms)</text>
+<line x1="685.0" y1="350.0" x2="1185.0" y2="350.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="354.0" class="axis" text-anchor="end">0</text>
+<line x1="685.0" y1="295.0" x2="1185.0" y2="295.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="299.0" class="axis" text-anchor="end">500</text>
+<line x1="685.0" y1="240.0" x2="1185.0" y2="240.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="244.0" class="axis" text-anchor="end">1000</text>
+<line x1="685.0" y1="185.0" x2="1185.0" y2="185.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="189.0" class="axis" text-anchor="end">1500</text>
+<line x1="685.0" y1="130.0" x2="1185.0" y2="130.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="134.0" class="axis" text-anchor="end">2000</text>
+<rect x="712.5" y="296.5" width="70.0" height="53.5" rx="4" fill="#2563eb" opacity="1"/>
+<text x="747.5" y="289.5" class="value" text-anchor="middle">486</text>
+<text x="747.5" y="370.0" class="axis" text-anchor="middle">Short</text>
+<text x="747.5" y="384.0" class="axis" text-anchor="middle">256/128</text>
+<rect x="837.5" y="189.0" width="70.0" height="161.0" rx="4" fill="#0d9488" opacity="1"/>
+<text x="872.5" y="182.0" class="value" text-anchor="middle">1464</text>
+<text x="872.5" y="370.0" class="axis" text-anchor="middle">Prefill</text>
+<text x="872.5" y="384.0" class="axis" text-anchor="middle">1024/128</text>
+<rect x="962.5" y="292.2" width="70.0" height="57.8" rx="4" fill="#d97706" opacity="1"/>
+<text x="997.5" y="285.2" class="value" text-anchor="middle">525</text>
+<text x="997.5" y="370.0" class="axis" text-anchor="middle">Decode</text>
+<text x="997.5" y="384.0" class="axis" text-anchor="middle">256/256</text>
+<rect x="1087.5" y="193.1" width="70.0" height="156.9" rx="4" fill="#7c3aed" opacity="1"/>
+<text x="1122.5" y="186.1" class="value" text-anchor="middle">1426</text>
+<text x="1122.5" y="370.0" class="axis" text-anchor="middle">Combined</text>
+<text x="1122.5" y="384.0" class="axis" text-anchor="middle">1024/256</text>
+<line x1="685.0" y1="185.0" x2="1185.0" y2="185.0" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="688.0" y="179.0" class="axis" text-anchor="start" fill="#dc2626">Long SLO 1500 ms</text>
+<text x="85.0" y="451.0" class="panel" text-anchor="start">P95 TPOT (ms)</text>
+<line x1="85.0" y1="685.0" x2="585.0" y2="685.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="689.0" class="axis" text-anchor="end">0.0</text>
+<line x1="85.0" y1="630.0" x2="585.0" y2="630.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="634.0" class="axis" text-anchor="end">25.0</text>
+<line x1="85.0" y1="575.0" x2="585.0" y2="575.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="579.0" class="axis" text-anchor="end">50.0</text>
+<line x1="85.0" y1="520.0" x2="585.0" y2="520.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="524.0" class="axis" text-anchor="end">75.0</text>
+<line x1="85.0" y1="465.0" x2="585.0" y2="465.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="75.0" y="469.0" class="axis" text-anchor="end">100.0</text>
+<rect x="112.5" y="592.7" width="70.0" height="92.3" rx="4" fill="#2563eb" opacity="1"/>
+<text x="147.5" y="585.7" class="value" text-anchor="middle">41.9</text>
+<text x="147.5" y="705.0" class="axis" text-anchor="middle">Short</text>
+<text x="147.5" y="719.0" class="axis" text-anchor="middle">256/128</text>
+<rect x="237.5" y="568.1" width="70.0" height="116.9" rx="4" fill="#0d9488" opacity="1"/>
+<text x="272.5" y="561.1" class="value" text-anchor="middle">53.1</text>
+<text x="272.5" y="705.0" class="axis" text-anchor="middle">Prefill</text>
+<text x="272.5" y="719.0" class="axis" text-anchor="middle">1024/128</text>
+<rect x="362.5" y="594.7" width="70.0" height="90.3" rx="4" fill="#d97706" opacity="1"/>
+<text x="397.5" y="587.7" class="value" text-anchor="middle">41.0</text>
+<text x="397.5" y="705.0" class="axis" text-anchor="middle">Decode</text>
+<text x="397.5" y="719.0" class="axis" text-anchor="middle">256/256</text>
+<rect x="487.5" y="581.3" width="70.0" height="103.7" rx="4" fill="#7c3aed" opacity="1"/>
+<text x="522.5" y="574.3" class="value" text-anchor="middle">47.1</text>
+<text x="522.5" y="705.0" class="axis" text-anchor="middle">Combined</text>
+<text x="522.5" y="719.0" class="axis" text-anchor="middle">1024/256</text>
+<line x1="85.0" y1="564.0" x2="585.0" y2="564.0" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="88.0" y="558.0" class="axis" text-anchor="start" fill="#dc2626">Long SLO 55 ms</text>
+<text x="685.0" y="451.0" class="panel" text-anchor="start">P95 E2E (ms)</text>
+<line x1="685.0" y1="685.0" x2="1185.0" y2="685.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="689.0" class="axis" text-anchor="end">0</text>
+<line x1="685.0" y1="630.0" x2="1185.0" y2="630.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="634.0" class="axis" text-anchor="end">5000</text>
+<line x1="685.0" y1="575.0" x2="1185.0" y2="575.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="579.0" class="axis" text-anchor="end">10000</text>
+<line x1="685.0" y1="520.0" x2="1185.0" y2="520.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="524.0" class="axis" text-anchor="end">15000</text>
+<line x1="685.0" y1="465.0" x2="1185.0" y2="465.0" stroke="#d8dee9" stroke-width="1"/>
+<text x="675.0" y="469.0" class="axis" text-anchor="end">20000</text>
+<rect x="712.5" y="624.5" width="70.0" height="60.5" rx="4" fill="#2563eb" opacity="1"/>
+<text x="747.5" y="617.5" class="value" text-anchor="middle">5497</text>
+<text x="747.5" y="705.0" class="axis" text-anchor="middle">Short</text>
+<text x="747.5" y="719.0" class="axis" text-anchor="middle">256/128</text>
+<rect x="837.5" y="604.1" width="70.0" height="80.9" rx="4" fill="#0d9488" opacity="1"/>
+<text x="872.5" y="597.1" class="value" text-anchor="middle">7355</text>
+<text x="872.5" y="705.0" class="axis" text-anchor="middle">Prefill</text>
+<text x="872.5" y="719.0" class="axis" text-anchor="middle">1024/128</text>
+<rect x="962.5" y="568.5" width="70.0" height="116.5" rx="4" fill="#d97706" opacity="1"/>
+<text x="997.5" y="561.5" class="value" text-anchor="middle">10594</text>
+<text x="997.5" y="705.0" class="axis" text-anchor="middle">Decode</text>
+<text x="997.5" y="719.0" class="axis" text-anchor="middle">256/256</text>
+<rect x="1087.5" y="544.3" width="70.0" height="140.7" rx="4" fill="#7c3aed" opacity="1"/>
+<text x="1122.5" y="537.3" class="value" text-anchor="middle">12789</text>
+<text x="1122.5" y="705.0" class="axis" text-anchor="middle">Combined</text>
+<text x="1122.5" y="719.0" class="axis" text-anchor="middle">1024/256</text>
+<line x1="685.0" y1="542.0" x2="1185.0" y2="542.0" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="7 5"/>
+<text x="688.0" y="536.0" class="axis" text-anchor="start" fill="#dc2626">Long SLO 13000 ms</text>
+<text x="640.0" y="786.0" class="note" text-anchor="middle">Long SLO lines evaluate the three long workloads; Short keeps its separate 600/50/6000 ms SLO.</text>
+</svg>
