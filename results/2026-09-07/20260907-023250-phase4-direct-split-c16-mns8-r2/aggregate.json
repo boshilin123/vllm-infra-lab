@@ -1,0 +1,242 @@
+{
+  "validation": "passed",
+  "experiment_id": "20260907-023250-phase4-direct-split-c16-mns8-r2",
+  "git_commit": "9d0f499fa25d1226ed681e7fe2aff57ee940e830",
+  "model": "Qwen3-8B",
+  "server": {
+    "node": "qhvgpu1",
+    "replicas": 2,
+    "gpu_physical_indices": [
+      1,
+      2
+    ],
+    "gpu_uuids": [
+      "GPU-5e5590e5-51de-1c1c-6c72-4cbe1477e116",
+      "GPU-d9258c08-1282-5f42-3b0d-c166cbb1455d"
+    ],
+    "engine": {
+      "max_num_seqs": 8,
+      "max_model_len": 4096,
+      "gpu_memory_utilization": 0.85
+    }
+  },
+  "scenario": {
+    "name": "phase4-direct-split",
+    "description": "Phase 4 双副本确定性 8/8 直连对照；隔离计算容量与 Service 分流。",
+    "prompt_tokens": 256,
+    "output_tokens": 128,
+    "concurrency": [
+      16
+    ],
+    "warmup_requests": 16,
+    "measured_requests": 100,
+    "repeats": 3,
+    "seed_offset": 600000
+  },
+  "selected_concurrency": 16,
+  "repeat_files": [
+    "repeat-01.json",
+    "repeat-02.json",
+    "repeat-03.json"
+  ],
+  "metrics": {
+    "duration": {
+      "metric": "duration",
+      "unit": "s",
+      "repeat_count": 3,
+      "mean": 38.20273466408253,
+      "median": 38.22900339961052,
+      "min": 38.142277002334595,
+      "max": 38.23692359030247,
+      "stdev": 0.05250741855366501,
+      "cv_percent": 0.13744413591164056
+    },
+    "request_throughput": {
+      "metric": "request_throughput",
+      "unit": "req/s",
+      "repeat_count": 3,
+      "mean": 2.617616956382746,
+      "median": 2.6158149861949793,
+      "min": 2.615273160348122,
+      "max": 2.6217627226051357,
+      "stdev": 0.003600545373983344,
+      "cv_percent": 0.13755050620389073
+    },
+    "output_throughput": {
+      "metric": "output_throughput",
+      "unit": "tok/s",
+      "repeat_count": 3,
+      "mean": 335.05497041699147,
+      "median": 334.82431823295735,
+      "min": 334.7549645245596,
+      "max": 335.58562849345736,
+      "stdev": 0.46086980786986803,
+      "cv_percent": 0.13755050620389073
+    },
+    "total_token_throughput": {
+      "metric": "total_token_throughput",
+      "unit": "tok/s",
+      "repeat_count": 3,
+      "mean": 1005.1649112509743,
+      "median": 1004.472954698872,
+      "min": 1004.2648935736789,
+      "max": 1006.7568854803721,
+      "stdev": 1.3826094236096467,
+      "cv_percent": 0.13755050620389495
+    },
+    "mean_ttft_ms": {
+      "metric": "mean_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 450.43885129193467,
+      "median": 452.8244060277939,
+      "min": 443.9020197838545,
+      "max": 454.5901280641556,
+      "stdev": 5.7294910944337385,
+      "cv_percent": 1.2719797766113183
+    },
+    "p50_ttft_ms": {
+      "metric": "p50_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 514.4166015088558,
+      "median": 519.784227013588,
+      "min": 502.5891624391079,
+      "max": 520.8764150738716,
+      "stdev": 10.257409755937719,
+      "cv_percent": 1.9939888654159494
+    },
+    "p95_ttft_ms": {
+      "metric": "p95_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 524.6461143096288,
+      "median": 524.6311642229557,
+      "min": 522.5688144564629,
+      "max": 526.7383642494678,
+      "stdev": 2.0848150992127907,
+      "cv_percent": 0.3973754960438726
+    },
+    "p99_ttft_ms": {
+      "metric": "p99_ttft_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 525.7071936875582,
+      "median": 525.4089809954166,
+      "min": 523.4086173772812,
+      "max": 528.3039826899767,
+      "stdev": 2.4612696913384586,
+      "cv_percent": 0.46818261589192883
+    },
+    "mean_tpot_ms": {
+      "metric": "mean_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 39.77073425735076,
+      "median": 39.777703902970146,
+      "min": 39.747450903762044,
+      "max": 39.78704796532008,
+      "stdev": 0.020698159122313105,
+      "cv_percent": 0.05204369370798704
+    },
+    "p50_tpot_ms": {
+      "metric": "p50_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 39.451055649149765,
+      "median": 39.45705805003174,
+      "min": 39.416158117177915,
+      "max": 39.47995078023963,
+      "stdev": 0.03231714061279969,
+      "cv_percent": 0.08191704906506393
+    },
+    "p95_tpot_ms": {
+      "metric": "p95_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 42.67265129824636,
+      "median": 42.70604998753296,
+      "min": 42.59081768297305,
+      "max": 42.72108622423307,
+      "stdev": 0.07126764725350951,
+      "cv_percent": 0.16701012260852485
+    },
+    "p99_tpot_ms": {
+      "metric": "p99_tpot_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 42.75836467214926,
+      "median": 42.77717838430499,
+      "min": 42.69210407701065,
+      "max": 42.80581155513215,
+      "stdev": 0.059142323838322526,
+      "cv_percent": 0.13831755328296028
+    },
+    "mean_itl_ms": {
+      "metric": "mean_itl_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 39.77073425735076,
+      "median": 39.777703902970146,
+      "min": 39.747450903762044,
+      "max": 39.78704796532008,
+      "stdev": 0.020698159122313105,
+      "cv_percent": 0.05204369370798704
+    },
+    "p95_itl_ms": {
+      "metric": "p95_itl_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 40.606931721170746,
+      "median": 40.655943751335144,
+      "min": 40.48153683543205,
+      "max": 40.68331457674503,
+      "stdev": 0.10945409333583249,
+      "cv_percent": 0.2695453428675768
+    },
+    "mean_e2el_ms": {
+      "metric": "mean_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 5501.322101975481,
+      "median": 5505.779497623444,
+      "min": 5491.828284561634,
+      "max": 5506.3585237413645,
+      "stdev": 8.226982717065965,
+      "cv_percent": 0.14954555586032167
+    },
+    "p50_e2el_ms": {
+      "metric": "p50_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 5522.328895827134,
+      "median": 5525.200542062521,
+      "min": 5514.157056808472,
+      "max": 5527.629088610411,
+      "stdev": 7.180436915259492,
+      "cv_percent": 0.13002552094796965
+    },
+    "p95_e2el_ms": {
+      "metric": "p95_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 5541.021894291043,
+      "median": 5543.585992604494,
+      "min": 5533.921820297837,
+      "max": 5545.5578699707985,
+      "stdev": 6.227388145818943,
+      "cv_percent": 0.11238699764451515
+    },
+    "p99_e2el_ms": {
+      "metric": "p99_e2el_ms",
+      "unit": "ms",
+      "repeat_count": 3,
+      "mean": 5541.77471101284,
+      "median": 5544.5892187952995,
+      "min": 5534.374147802591,
+      "max": 5546.36076644063,
+      "stdev": 6.469995914727195,
+      "cv_percent": 0.11674952974666682
+    }
+  }
+}
