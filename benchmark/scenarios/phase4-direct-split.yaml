@@ -1,0 +1,10 @@
+name: phase4-direct-split
+description: Phase 4 双副本确定性 8/8 直连对照；隔离计算容量与 Service 分流。
+prompt_tokens: 256
+output_tokens: 128
+concurrency:
+  - 16
+warmup_requests: 16
+measured_requests: 100
+repeats: 3
+seed_offset: 600000

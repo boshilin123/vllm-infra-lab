@@ -4,6 +4,7 @@
 
 - `scenarios/`：与工具无关的负载定义，固定输入/输出 Token、并发和持续时间。
 - `run_benchmark.py`：读取场景，执行预热与重复的 vLLM benchmark，并保存原始结果和实验元数据。
+- `run_dual_target_benchmark.py`：把总并发严格平分到两个 Pod，生成逐 target 原始结果和逐请求合并结果（Phase 4 路由对照）。
 - `aggregate_results.py`：校验并汇总重复实验（Phase 2）。
 
 压测客户端与推理服务应尽量分离，避免客户端 CPU 或网络瓶颈污染结果。
@@ -61,6 +62,33 @@ python benchmark/run_benchmark.py \
 runner 优先选择当前 Python 解释器同一 `bin` 目录中的 `vllm`，防止虚拟环境 Python 与系统 `/usr/local/bin/vllm` 混用。dry-run 输出仍必须人工确认可执行文件路径和版本。
 
 随机种子由场景、并发档位和重复轮次共同决定：同一实验可以复现，不同场景和并发档位不会生成相同 Prompt，从而避免服务端 Prefix Cache 污染控制变量。历史 `short` 场景未设置 `seed_offset`，默认仍为 0，保留既有基线的种子；新增场景必须使用互不重复的非负偏移量。
+
+## Phase 4 确定性双目标对照
+
+普通 Service 双副本实验已经证明整场累计请求接近 50/50，但单波次会瞬时偏斜。`run_dual_target_benchmark.py` 不经过 Service，动态接收两个 Ready Pod IP，把总 c16 拆成两条同时运行的 c8；每个 target 每轮预热 8 个、正式 50 个请求，三轮总正式请求仍为 300。两个 target 使用相同 seed，确保两张卡接收等价工作量；KV Cache 不跨 Pod，因此不会形成跨副本缓存命中。
+
+示例只用于审核参数；Pod 名、Pod IP、物理 GPU 编号和 UUID 必须在每次扩容后重新查询：
+
+```bash
+python benchmark/run_dual_target_benchmark.py \
+  --target-base-url http://<POD_A_IP>:8000 \
+  --target-base-url http://<POD_B_IP>:8000 \
+  --target-pod <POD_A_NAME> \
+  --target-pod <POD_B_NAME> \
+  --scenario benchmark/scenarios/phase4-direct-split.yaml \
+  --concurrency 16 \
+  --server-node qhvgpu1 \
+  --server-gpu-physical-index <POD_A_GPU_INDEX> \
+  --server-gpu-physical-index <POD_B_GPU_INDEX> \
+  --server-gpu-uuid <POD_A_GPU_UUID> \
+  --server-gpu-uuid <POD_B_GPU_UUID> \
+  --server-max-num-seqs 8 \
+  --server-max-model-len 4096 \
+  --server-gpu-memory-utilization 0.85 \
+  --dry-run
+```
+
+每轮保留 `target-1-repeat-NN.json`、`target-2-repeat-NN.json` 两份 vLLM 原始结果，并从两边逐请求样本重新计算 TTFT/TPOT/ITL/E2E 的 P50/P95/P99。吞吐分母采用两个近同步子任务中较长的服务端测量窗口，不把两个 P95 简单平均，也不把父进程加载 tokenizer 的时间混入服务吞吐。生成的 `repeat-NN.json` 继续交给 `aggregate_results.py` 做统一校验和汇总。
 
 ## Prefill / Decode 单变量对照
 
