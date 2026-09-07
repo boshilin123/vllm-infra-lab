@@ -14,6 +14,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from urllib.request import ProxyHandler, build_opener
 
 import yaml
@@ -41,13 +42,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--server-gpu-physical-index",
         type=int,
+        action="append",
         required=True,
-        help="GPU 在宿主机 nvidia-smi 中的物理编号，仅用于记录。",
+        help="GPU 在宿主机 nvidia-smi 中的物理编号；多副本时重复传入。",
     )
     parser.add_argument(
         "--server-gpu-uuid",
+        action="append",
         required=True,
-        help="容器内外一致的 GPU UUID，用于跨 Pod 重建识别同一设备。",
+        help="容器内外一致的 GPU UUID；多副本时按物理编号相同顺序重复传入。",
+    )
+    parser.add_argument(
+        "--server-replicas",
+        type=int,
+        default=1,
+        help="服务端 Ready 副本数，默认 1。",
     )
     parser.add_argument(
         "--server-max-num-seqs",
@@ -214,10 +223,20 @@ def main() -> int:
     tokenizer_path = args.tokenizer.resolve()
     scenario = load_scenario(scenario_path, args.concurrency)
     vllm = find_vllm()
-    if args.server_gpu_physical_index < 0:
+    if args.server_replicas <= 0:
+        raise ValueError("server-replicas 必须是正整数")
+    if len(args.server_gpu_physical_index) != args.server_replicas:
+        raise ValueError("server-gpu-physical-index 的数量必须等于 server-replicas")
+    if len(args.server_gpu_uuid) != args.server_replicas:
+        raise ValueError("server-gpu-uuid 的数量必须等于 server-replicas")
+    if any(index < 0 for index in args.server_gpu_physical_index):
         raise ValueError("server-gpu-physical-index 不能为负数")
-    if not args.server_gpu_uuid.startswith("GPU-"):
+    if len(set(args.server_gpu_physical_index)) != args.server_replicas:
+        raise ValueError("多副本的 server-gpu-physical-index 不能重复")
+    if any(not uuid.startswith("GPU-") for uuid in args.server_gpu_uuid):
         raise ValueError("server-gpu-uuid 应以 GPU- 开头")
+    if len(set(args.server_gpu_uuid)) != args.server_replicas:
+        raise ValueError("多副本的 server-gpu-uuid 不能重复")
     if args.server_max_num_seqs <= 0:
         raise ValueError("server-max-num-seqs 必须是正整数")
     if args.server_max_model_len <= 0:
@@ -234,7 +253,7 @@ def main() -> int:
     timestamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
     experiment_id = (
         f"{timestamp}-{scenario['name']}-c{args.concurrency}"
-        f"-mns{args.server_max_num_seqs}"
+        f"-mns{args.server_max_num_seqs}-r{args.server_replicas}"
     )
     result_dir = REPO_ROOT / "results" / datetime.now().strftime("%Y-%m-%d") / experiment_id
 
@@ -289,8 +308,9 @@ def main() -> int:
         # 物理编号可能在调度后变化，UUID 才是识别 GPU 的稳定字段。
         "server": {
             "node": args.server_node,
-            "gpu_physical_index": args.server_gpu_physical_index,
-            "gpu_uuid": args.server_gpu_uuid,
+            "replicas": args.server_replicas,
+            "gpu_physical_indices": args.server_gpu_physical_index,
+            "gpu_uuids": args.server_gpu_uuid,
             "engine": {
                 "max_num_seqs": args.server_max_num_seqs,
                 "max_model_len": args.server_max_model_len,
@@ -310,8 +330,13 @@ def main() -> int:
         yaml.safe_dump(metadata, file, allow_unicode=True, sort_keys=False)
 
     env = os.environ.copy()
-    env["NO_PROXY"] = "127.0.0.1,localhost"
-    env["no_proxy"] = "127.0.0.1,localhost"
+    service_host = urlparse(args.base_url).hostname
+    no_proxy_hosts = ["127.0.0.1", "localhost"]
+    if service_host:
+        no_proxy_hosts.append(service_host)
+    no_proxy = ",".join(no_proxy_hosts)
+    env["NO_PROXY"] = no_proxy
+    env["no_proxy"] = no_proxy
     for label, command in commands:
         print_command(label, command)
         subprocess.run(command, check=True, env=env)

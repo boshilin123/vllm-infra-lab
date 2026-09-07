@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qwen3-8b
+  namespace: vllm-infra-lab
+spec:
+  # 共享环境硬上限：任何时刻最多两个 vLLM 副本、两张整卡。
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # 禁止更新时临时创建第三个 GPU Pod。
+      maxSurge: 0
+      # 更新时至少保留一个可用副本，代价是逐个冷启动。
+      maxUnavailable: 1

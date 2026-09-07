@@ -24,6 +24,7 @@ python benchmark/run_benchmark.py \
   --scenario benchmark/scenarios/short.yaml \
   --concurrency 1 \
   --server-node qhvgpu1 \
+  --server-replicas 1 \
   --server-gpu-physical-index <本轮宿主机物理编号> \
   --server-gpu-uuid <本轮容器内外一致的GPU-UUID> \
   --server-max-num-seqs 8 \
@@ -32,9 +33,30 @@ python benchmark/run_benchmark.py \
   --dry-run
 ```
 
-去掉 `--dry-run` 后，每次重复都会先执行场景定义的预热请求，再执行正式请求。原始 JSON 和 `metadata.yaml` 保存到 `results/YYYY-MM-DD/<experiment-id>/`。目录名包含客户端并发和服务端 `max-num-seqs`，例如 `short-c16-mns8`，便于区分参数实验。
+去掉 `--dry-run` 后，每次重复都会先执行场景定义的预热请求，再执行正式请求。原始 JSON 和 `metadata.yaml` 保存到 `results/YYYY-MM-DD/<experiment-id>/`。目录名包含客户端并发、服务端 `max-num-seqs` 和副本数，例如 `phase4-static-c16-mns8-r2`。
 
 物理 GPU 编号和 UUID 必须在每组实验前从宿主机与容器交叉核对；Pod 重建后不得沿用旧值。三个 `--server-*` 引擎参数只负责把服务端实际配置写入 metadata，并不会远程修改 vLLM；运行前必须用 Deployment args 或 Pod command 核对它们与真实配置一致。
+
+多副本时，`--server-gpu-physical-index` 和 `--server-gpu-uuid` 按相同顺序各重复一次，并显式传入副本数。例如：
+
+```bash
+python benchmark/run_benchmark.py \
+  --base-url http://qwen3-8b:8000 \
+  --scenario benchmark/scenarios/phase4-static.yaml \
+  --concurrency 16 \
+  --server-node qhvgpu1 \
+  --server-replicas 2 \
+  --server-gpu-physical-index 1 \
+  --server-gpu-uuid GPU-第一张卡 \
+  --server-gpu-physical-index 2 \
+  --server-gpu-uuid GPU-第二张卡 \
+  --server-max-num-seqs 8 \
+  --server-max-model-len 4096 \
+  --server-gpu-memory-utilization 0.85 \
+  --dry-run
+```
+
+该命令必须在 `phase4-benchmark-client` 容器内执行，通过 Service DNS 访问两个副本。runner 会把 Service 主机名加入 `NO_PROXY/no_proxy`，避免内部请求误走公司代理。
 
 runner 优先选择当前 Python 解释器同一 `bin` 目录中的 `vllm`，防止虚拟环境 Python 与系统 `/usr/local/bin/vllm` 混用。dry-run 输出仍必须人工确认可执行文件路径和版本。
 

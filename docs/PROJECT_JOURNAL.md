@@ -874,6 +874,61 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 
 实验执行者进一步质疑 120 个请求是否过少。按已有 c16-mns8 约 1.4 req/s 估算，120 个请求只持续约 86 秒：扣除 `[1m]` 窗口形成时间后，稳态有效采样点太少。因此在正式执行前把请求数修正为 240，预计持续约 171 秒，约有 11 个抓取点，其中约 7 个处于完整 1 分钟窗口形成后的负载期。并发和请求形状不变，所以没有加大瞬时 GPU 压力，只延长了单轮观测时间；总正式请求数仍少于 Phase 2 单场景三轮的 300 个。
 
+### 11.9 Phase 3 实验后复盘（已完成）
+
+实验执行者原始回答：当 `running=8、waiting>0、GPU≈97%、KV≈15%` 时倾向直接增加 mns；能够判断有 waiting 的场景 TTFT/E2E 更差并更需要扩容，但认为输出吞吐也必然降低；尚不理解 HPA/KEDA；把 Phase 3 概括为“找到 mns8，并通过设置 mns16 明显好转”。同时追问 Phase 3 重复负载的必要性、PromQL、Grafana 数据源命名、整阶段图表含义，以及 20,212 MiB DCGM 显存中实际 KV block 池的大小。
+
+校正后的理解：
+
+1. Phase 2 用客户端精确分位数回答“性能结果是多少”；Phase 3 用 scheduler、KV、服务端 histogram 和 DCGM 统一时间线回答“为什么出现该结果、何时出现与恢复、哪个指标可以驱动运维动作”。重复 c16-mns8 是复现已知症状以建立运行时因果证据，不是再次寻找性能提升。
+2. `GPU-Util≈97%`只表示采样窗口内 GPU 大部分时间有 kernel 执行，不等于 Tensor Core、显存带宽或单卡吞吐达到理论峰值；`KV≈13.5%`排除了 KV block 容量耗尽。两者结合 `running=8、waiting=8`说明 mns8 下运行批次令 GPU 持续繁忙且入口排队。增加 mns 是可测试的单卡调优动作，但已有 mns16 结果显示 TPOT 上升且 TTFT/E2E 仍违反 SLO，因此当前 c16 目标更适合验证“每副本约 8 并发、两副本分担”，不能仅凭单一指标决定。
+3. `running=8、waiting=0`与`running=8、waiting=8`可以有相近的稳态 Generation throughput；后者不必然降低吞吐，但额外请求在队列中显著增加 TTFT/E2E，扩容紧迫性更高。
+4. 15 秒 scrape 解释指标被发现的离散滞后；Token rate 与 histogram P95 还使用 `[1m]`滑动窗口，所以请求结束后可继续保留最多约一分钟的尾迹。跨 Prometheus/DCGM exporter 与 remote-write 到 VictoriaMetrics 还会造成采样点和峰值略有差异。
+5. DCGM framebuffer 的约 20,212 MiB 包含模型权重、完整预分配 KV 池、CUDA context/graph、workspace 和 allocator 保留空间；它从服务启动后基本恒定，不适合作为流量弹性信号。`gpu_cache_usage_perc`才是预分配 KV block 池中当前被序列使用的比例。
+6. 当前 Qwen3-8B BF16 每个 Token 的 KV 为 `2 × 36 layers × 8 KV heads × 128 head_dim × 2 bytes = 144 KiB`。启动日志确认 1427 个 block、每 block 16 Token，即 22,832 slots、约 3.14 GiB 完整 KV 池；每 block 2.25 MiB。本轮 13.525%峰值对应 193 blocks、3088 slots、约 434.25 MiB 实际占用。
+7. SLO 使用客户端逐请求精确 P95；Prometheus histogram P95用于运行时趋势和告警。PromQL 是 Prometheus Query Language；VictoriaMetrics 提供 Prometheus 兼容 API，因此 Grafana 中名为、类型为 Prometheus 的数据源可以实际指向 vmselect。两套后端的核心峰值一致，小幅数值差异来自抓取、remote-write 和查询对齐，不应解释为实验不稳定。
+8. HPA 是 Kubernetes 原生水平副本伸缩控制器；KEDA 从 Prometheus等外部事件源读取信号，并通常借助HPA调整副本。本项目后续若实施，优先考虑持续 waiting/queue 与 SLO，而不是几乎恒定的DCGM显存占用；副本数硬限制为1–2，且必须考虑Qwen3-8B约数分钟冷启动。
+9. Phase 3自身没有把 mns8改为mns16；该单变量优化属于Phase 2。Phase 3的结论是：c16-mns8的尾延迟恶化来自8 running/8 waiting的配置排队而非KV耗尽，`waiting_requests`可作为Phase 4候选弹性信号，负载结束后服务能够恢复空闲。
+
+### 11.10 Phase 4 事前判断与安全审计（进行中）
+
+实验执行者的事前判断：约 3～4 分钟的模型冷启动无法改善只持续约 2～3 分钟的同一波突发请求，基于 waiting 的反应式扩容更适用于持续需求；自动弹性前应先获得静态双副本的容量数据。固定总并发 16 时，理想状态为每副本约 `running=8、waiting=0`，但请求完成时间差异、入口负载均衡策略以及两张卡的实际性能差异都可能造成不均衡。`minReplicas` 应保留为 1，以常驻一张卡换取基础服务的低启动等待；项目最多使用两张卡。实施前必须确认不修改公司服务、CPU/内存/GPU 仍有余量，且本项目启动不会影响已有工作负载。
+
+Phase 4 的实施顺序据此冻结为：
+
+1. 先做宿主机与 Kubernetes 的只读容量、现有占用、设备分配及弹性组件审计。
+2. 若能确定第二副本不会落到公司占用的 GPU，先短时部署静态双副本，验证路由、每副本 running/waiting、吞吐、SLO 和负载均衡。
+3. 只有静态双副本有明确收益，且集群已有安全可用的 custom metrics/KEDA 通路时，才测试 `minReplicas=1、maxReplicas=2` 的自动扩缩容。
+4. waiting 触发必须使用持续窗口而非单个采样点，以降低 15 秒抓取离散性和瞬态抖动导致的误扩容；具体阈值在静态数据后确定。
+5. 若模型冷启动晚于负载结束，则如实记录纯反应式扩容对短突发无效，并把适用条件限定为持续流量、预热副本或可预测流量。
+
+弹性决策不能只看单一指标。当前已经由 Phase 2/3 证据支持的判断链是：`waiting>0` 表明需求超过当前接纳上限，但也可能先提示调整 mns；KV Cache 仍低说明不是 KV 容量耗尽；GPU-Util 约 97%且 mns16 的 TPOT 上升说明继续扩大单卡批宽会增加计算竞争；最终由预注册 SLO 判定 mns16 仍不合格。因此，本项目选择验证横向容量，而不是把“有 waiting”机械地等价为增加 mns 或扩容。
+
+2026-09-07 宿主机初步只读快照显示 4 张 NVIDIA A10：GPU 0 有公司 Python 进程并占约 5901 MiB，明确排除；GPU 1 为本项目现有服务并占约 20213 MiB；GPU 2、3 当时各约 1 MiB、无计算进程。随后完成 Kubernetes 侧交叉核对：节点 `qhvgpu1` 的 `nvidia.com/gpu` capacity/allocatable 均为 4，当前两个 Running 整卡 Pod 分别是公司 `default/magic-pdf-gpu-api` 和本项目 `vllm-infra-lab/qwen3-8b`；容器内 UUID 进一步确认前者对应物理 GPU 0、后者对应物理 GPU 1。节点资源账本为 GPU request/limit `2/4`，因此当时 GPU 2/3 同时满足“宿主机无进程”和“Kubernetes 未分配”两项条件。共享环境状态会变化，正式扩容前必须再次执行相同快照。
+
+节点静态资源账本显示 CPU requests 约 76%、memory requests 约 40%，新增一个副本的 2 CPU/16 GiB request 后预计约为 82%/53%；宿主机快照还有约 82 GiB available memory、CPU idle 约 91%～93%。但 memory limits 已约 96%，新增 32 GiB limit 后会超过节点容量；这不是立即占用，却意味着发生并发内存峰值时缺少 limit 层面的硬容量保证。Metrics API 未安装，`kubectl top`不可用，所以只能把宿主机快照与 requests 共同作为短时实验前提，不能声称已有完整资源监控。
+
+集群有标准 NVIDIA Device Plugin，并以 UUID/envvar 方式向容器注入设备；HAMi v2.5.2 虽已安装，但本项目当前使用标准整卡资源 `nvidia.com/gpu: 1`，没有使用 `nvidia.com/vgpu`。KEDA CRD、resource Metrics API、custom metrics API 和 external metrics API 均不存在；现有 HPA 的 target 也显示 `<unknown>`。因此不能在不修改公司集群基础设施的前提下直接实现 Prometheus → KEDA/HPA。Phase 4 先完成静态双副本；后续弹性优先考虑仅作用于本 namespace、可审计且可回退的最小控制器或离线策略回放，不安装集群级组件。
+
+流量入口还存在一个实验设计限制：`kubectl port-forward service/qwen3-8b`会选择一个后端 Pod 建立转发，不能证明 Service 对两副本做了负载均衡。静态双副本实验必须从能够直接访问 ClusterIP 的宿主机或集群内客户端请求 Service，并用 `pod` 标签分别检查两个副本。请求一旦分配给某个 Pod，其执行中状态和该 Pod 内的 waiting 不会迁移到另一 Pod；只有后续新连接/新请求可能被分配给空闲副本。长连接复用、连接级哈希、随机分配和两卡速率差异都可能导致短时不均衡。
+
+宿主机对 Service ClusterIP `10.244.25.38:8000` 的健康检查超时，因此静态实验不能直接从宿主机访问 Service。项目新增独立的 `deploy/phase4-static` Kustomize 覆盖层：base 继续安全地保持单副本；覆盖层才把副本数设为 2，并以 `maxSurge=0、maxUnavailable=1`确保滚动更新时不会短暂创建第三个 GPU Pod。覆盖层同时创建无 GPU、250m CPU/512 MiB request 的 `phase4-benchmark-client`，从集群内通过 `http://qwen3-8b:8000`压测。客户端使用 UID/GID 1000 写入本项目 hostPath，模型目录只读挂载，不修改公司 namespace。
+
+benchmark runner 已准备记录 `server-replicas` 和按顺序重复传入的 GPU 物理编号/UUID，并把 Service DNS 主机名加入 `NO_PROXY`；新增 `phase4-static.yaml` 固定 256/128 Token、c16、16 个预热请求、每轮 100 个正式请求、3 轮和独立 seed offset。两副本 dry-run 与 Kustomize 本地渲染均通过，但覆盖层尚未 dry-run 到 API Server、尚未 apply，也没有生成任何双副本性能结果。
+
+### 11.11 Phase 4 静态双副本事前假设
+
+实验执行者原始回答：理想吞吐是单副本 c8 的两倍，实际预计达到理想值的 80%～90%；两副本延迟应更接近单副本 c8；判断均衡时还要看输出吞吐和 TTFT/TPOT/E2E；若请求按 10/6 分配，则两个副本分别约为 `running=8、waiting=2`和`running=6、waiting=0`，整体 P95 会显著上升；验收要求吞吐至少增加 50%、SLO 达标、成功率至少 99%。
+
+校正并冻结为以下可检验假设与标准：
+
+1. 以历史 c8 的 178.796288 tok/s 计算，线性上界为 357.592576 tok/s，80%～90%扩展效率对应 286.07～321.83 tok/s。若用当前 GPU 1 相邻校准值 180.649355 tok/s，则对应 289.04～325.17 tok/s。两张实际 GPU 不同，因此前者用于回答原假设，后者作为更接近当前环境的参考，不把细小差异包装成收益。
+2. 完美 8/8 分流时，每副本工作状态更接近单副本 c8-mns8，因此预计 TTFT、TPOT、E2E 也更接近当前同卡 c8 校准的约 486 ms、41.95 ms、5.497 s，并有机会同时通过 Short SLO；但连接级分配偏斜可能使尾部请求重新排队，所以不预设必然通过。
+3. 某个 15 秒采样点同时看到 `running=8/8`不能证明累计请求均衡。负载分布应比较按 `pod` 分组的 `request_success_total`增量、Prompt/Generation Token counter 增量，并结合每副本 running/waiting 时间线。客户端吞吐和延迟是整体效果指标，不足以单独证明请求由两个 Pod 均匀承接。
+4. 10/6 分流下，第一副本预计 `running=8、waiting=2`，第二副本约 `running=6、waiting=0`；排队请求会主要抬高 TTFT/E2E P95。具体是否“显著”上升取决于这种偏斜持续多久和最慢 5%请求是否落入排队批次，必须由时间线验证。
+5. 正式最低验收冻结为：300 个请求成功率至少 99%；Short SLO v1 三项同时通过；输出吞吐至少比单副本 c16-mns8 三轮基线 179.285 tok/s 提高 50%，即至少 268.93 tok/s；每个副本承接总请求的 40%～60%，否则单独标记负载不均衡。还必须确认公司 Pod Ready、restart 和 GPU 0 映射不变，本项目只占 GPU 1 加 GPU 2/3 之一，无 OOM、preemption 或第三个 vLLM Pod。
+6. 吞吐还必须与单卡 mns16 的 305.434 tok/s 并列报告。若双卡只超过 268.93 tok/s但低于 305.434 tok/s，只能说明它以更多硬件换取了 SLO；不能声称吞吐效率优于单卡 mns16。若同时超过 305.434 tok/s并通过全部 SLO，才形成更强的横向扩容结论。
+
 ## 12. 当前阶段与下一步
 
 ### 12.1 阶段状态
@@ -884,7 +939,7 @@ E2E 包含一次 TTFT 和约 127 次 TPOT。TTFT 虽然相对涨幅大，但绝�
 | Phase 1 单副本服务 | 已完成 | Deployment/Service/探针、API、删除 Pod 自愈 | 后续将冷启动指标自动化 |
 | Phase 2 基准与参数实验 | 已完成 | 工具链、聚合、Short 并发扫描、`max-num-seqs` 8/16、Prefill/Decode/组合长上下文、三张客户端性能图 | GPU/KV/waiting 时序证据归入 Phase 3 |
 | Phase 3 可观测性 | 已完成（共享环境边界） | `/metrics`、ServiceMonitor、Prometheus 指标发现、共享 PromQL、Grafana 9.3/schema 37 Dashboard JSON、正式统一时间线与可复现 SVG、c16 排队和 Pod 自愈证据 | 共享 Grafana 持久化导入因安全边界明确跳过，不作为欠项 |
-| Phase 4 多副本与弹性 | 计划中 | 架构和指标方向 | 第二张可用 GPU、共享模型、Adapter/KEDA、HPA 与突发流量实验 |
+| Phase 4 多副本与弹性 | 进行中（只读审计） | 事前判断、实施顺序、宿主机 GPU 瞬时快照 | Kubernetes 设备分配、静态双副本、Adapter/KEDA、HPA 与持续流量实验 |
 
 Phase 2 已闭环。Phase 3 的 c16-mns8 Prometheus/DCGM 统一时间线、Dashboard 版本兼容、真实 PromQL 和故障证据也已闭环，但不写入公司的共享 Grafana。当前主线是提交兼容性修正，然后进入 Phase 4 的只读资源与调度安全审计；不再扩展 Phase 2 参数矩阵。
 
@@ -910,7 +965,7 @@ Phase 2 已闭环。Phase 3 的 c16-mns8 Prometheus/DCGM 统一时间线、Dashb
 
 第十步已完成只读 Grafana 兼容性审计：集群运行 Grafana 9.3.14，子路径为 `/ui/insight-grafana`，默认 Prometheus 数据源 UID 为 `PBFA97CFB590B2093`，现有 Dashboard 使用 schema 37。生成器已从未来版本 schema 39 修正为 37。直连身份对现有 Dashboard 为 `canSave=false`；持久化导入需要更高权限并写入公司共享 `insight-system` Grafana，违反本项目安全边界，因此明确跳过，不把“未写公司系统”误报为功能失败。
 
-后续顺序保持为：先提交 Phase 3 的 Grafana 兼容性修正；随后进入 Phase 4。Phase 4 先只读审计第二张 GPU 与设备分配策略，确认不会影响公司服务后，最多短时运行两个副本。
+第十一步已完成只读部分并进入静态实验准备：GPU 0/1 已分别映射到公司 Pod/本项目 Pod，GPU 2/3 在宿主机与 Kubernetes 两侧均为空闲；CPU/内存 request 与宿主机瞬时余量可支持一次短时第二副本。集群没有 Metrics API、custom/external metrics API 或 KEDA，因此不修改公司基础设施。Phase 4 静态覆盖层、集群内 benchmark client、多副本 metadata 和独立场景已完成本地渲染/dry-run；下一步由项目本人检查 Git diff，并对覆盖层执行 client/server dry-run，尚不直接 apply。
 
 ## 13. 当前可用于面试的表述边界
 

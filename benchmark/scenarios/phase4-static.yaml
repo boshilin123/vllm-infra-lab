@@ -1,0 +1,10 @@
+name: phase4-static
+description: Phase 4 静态双副本容量与 Service 分流验证；不用于自动扩缩容。
+prompt_tokens: 256
+output_tokens: 128
+concurrency:
+  - 16
+warmup_requests: 16
+measured_requests: 100
+repeats: 3
+seed_offset: 500000

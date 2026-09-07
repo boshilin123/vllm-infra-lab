@@ -66,6 +66,12 @@ HAMi 不进入本项目的主标题和核心验收项。若后续开展 GPU 配�
 
 ### Phase 4：多副本与弹性
 
+HPA（Horizontal Pod Autoscaler）是 Kubernetes 原生的水平副本自动伸缩控制器，可根据 CPU、内存或接入的自定义/外部指标调整 Deployment 副本数。KEDA（Kubernetes Event-driven Autoscaling）是事件驱动的伸缩组件，可从 Prometheus、消息队列等外部系统读取信号，并通常通过生成或管理 HPA 实现扩缩容。本项目只把两者作为候选实现；必须先完成只读能力与安全审计，再选择集群已有、权限可控且不影响公司服务的最小方案。
+
+实施顺序固定为“只读安全审计 → 静态双副本容量与路由验证 → 自动弹性”。弹性边界为 `minReplicas=1、maxReplicas=2`；不使用服务启动后基本恒定的 DCGM framebuffer 显存占用作为扩容信号。候选主信号是持续的 waiting/queue，GPU、KV Cache、TPOT 与 SLO 用于解释瓶颈和约束决策。约数分钟的模型冷启动意味着纯反应式扩容可能无法改善 2～3 分钟的短突发，实验必须同时说明适用负载持续时间。
+
+静态双副本测试不得通过 `kubectl port-forward service/...`判断负载均衡，因为该转发会固定选择一个后端 Pod。客户端应直接访问 ClusterIP，或在集群内访问 Service；验收必须按 `pod` 标签展示每副本 running/waiting 和请求分布。请求执行中不跨 Pod 迁移，因此还要识别 HTTP 长连接复用和连接级分配造成的不均衡。
+
 交付物：
 
 - 两副本部署与流量入口。
