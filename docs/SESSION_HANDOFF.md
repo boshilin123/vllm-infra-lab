@@ -60,7 +60,7 @@ Pod 名称、Pod IP、物理 GPU 编号都可能在重建后改变。必须通�
 | Phase 1 单副本服务 | 已完成 | Deployment/Service、三类探针、OpenAI API、Pod 自愈 |
 | Phase 2 性能与参数 | 已完成 | 并发扫描、mns8/16、Prefill/Decode、三轮聚合、确定性 SVG |
 | Phase 3 可观测性 | 已完成 | ServiceMonitor、13 条 PromQL、Grafana schema 37 JSON、统一时间线 |
-| Phase 4 多副本与弹性 | 进行中 | 静态双副本、确定性 8/8、离线弹性回放、least-inflight HTTP/SSE mock 验证；真实入口标准已冻结，尚未执行安全审计或真实实验 |
+| Phase 4 多副本与弹性 | 已完成当前安全范围 | 静态双副本、确定性8/8、离线弹性回放、least-inflight HTTP/SSE真实双副本验证与安全回退；未部署自动控制器 |
 
 ## 5. 已冻结的 SLO
 
@@ -199,7 +199,7 @@ DCGM framebuffer 全程约 20,212 MiB 是预分配常驻显存；vLLM KV usage �
 - least-inflight 核心 7 个、HTTP 适配 9 个、弹性回放 4 个，全仓当前 20 个测试通过
 - `/_router/status`只读返回每个后端的健康、in-flight 和累计选择数，不把状态查询转发到后端
 
-尚未实现：Kubernetes EndpointSlice 服务发现、生产级连接池/背压/限流、认证与指标、优雅摘流、Token-aware 权重。客户端断开在下一次下游写入时被发现；若上游长时间没有新 chunk，取消感知会延后。当前仅通过本地 mock backend 验证，不能称为“已部署的生产队列感知负载均衡器”。
+尚未实现：Kubernetes EndpointSlice 服务发现、生产级连接池/背压/限流、认证与指标、优雅摘流、Token-aware 权重。客户端断开在下一次下游写入时被发现；若上游长时间没有新 chunk，取消感知会延后。当前已通过一次固定256/128 Token真实双副本实验，仍不能称为“已部署的生产队列感知负载均衡器”。
 
 流式请求不能在收到响应头时释放 in-flight，因为此时后端通常仍在 Decode。必须等流正常结束、客户端断开或异常清理。后端不健康时，新请求应转向其他健康后端；已开始且连接正常的请求继续，生成中途失败不能盲目重试，否则可能重复或改变输出。
 
@@ -218,14 +218,15 @@ DCGM framebuffer 全程约 20,212 MiB 是预分配常驻显存；vLLM KV usage �
 → Prometheus/DCGM 时间线补齐运行时证据
 → 静态双副本证明容量、同时暴露连接级瞬时偏斜
 → 确定性 8/8 反事实对照证明请求分流是尾延迟主因
+→ 真实 least-inflight 代理在保持吞吐时恢复 Short SLO
 → 155 秒冷启动回放界定反应式弹性的适用流量
 ```
 
 平台/弹性方向最强的一条可表述为：
 
-> 在共享 GPU 集群完成资源审计后，以 `maxSurge=0`短时扩至两张 A10；普通 Service 将 c16 输出吞吐提高 85.69%至 332.91 tok/s，但瞬时 waiting 达 6/4。进一步设计确定性 8/8 对照，在吞吐基本不变时将 P95 TTFT 从 5.47 s降至 0.525 s、P95 E2E 从 10.74 s降至 5.54 s，验证请求级分流是横向容量转化为 SLO 收益的关键，并在实验后恢复单副本。
+> 定位普通 Kubernetes Service 在双 A10、c16 下的连接级瞬时偏斜后，设计并实现 least-inflight HTTP/SSE 路由器；三轮300/300请求成功，以335.35 tok/s保留约100.2%的确定性8/8直连吞吐，将 P95 TTFT 从5.47 s降至0.456 s、P95 E2E从10.74 s降至5.53 s，并在实验后恢复单副本、释放临时 GPU。
 
-可以辅助说明离线策略与路由核心，但必须明确“离线回放”“核心单元测试”，不能写成真实 HPA/KEDA 或生产代理已经上线。
+可以辅助说明离线弹性策略，但必须明确“离线回放”；真实代理也只能表述为固定成本合成负载下的受控实验，不能写成 HPA/KEDA 或生产代理已经上线。
 
 ## 11. 简历和面试不能越界
 
@@ -256,13 +257,13 @@ DCGM framebuffer 全程约 20,212 MiB 是预分配常驻显存；vLLM KV usage �
 
 ## 13. Git 与本轮状态
 
-当前已推送的远端 HEAD：
+本轮真实实验开始时已推送的远端 HEAD：
 
 ```text
-29d5648 router: add minimal HTTP streaming proxy
+878c97a bench: prepare least-inflight router experiment
 ```
 
-该提交已位于 `origin/main`且工作区曾确认干净。生成本次更新时，工作区包含待用户提交的只读路由状态端点、真实入口独立场景、预注册实验设计和文档更新；若用户随后已经提交，新会话应以 Git 实际状态为准。提交前校验命令为：
+该提交已位于 `origin/main`且真实实验开始前工作区干净。当前工作区新增2026-09-08真实结果、脱敏运行时摘要及待用户检查的文档更新；包含内部 Pod 名称/IP 的原始 `.log` 仅留在实验主机并由 `.gitignore` 排除。新会话仍应以 Git 实际状态为准。提交前校验命令为：
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
@@ -276,7 +277,7 @@ git status --short
 
 ## 14. 下一步建议
 
-最小 HTTP/流式适配层已完成本地 CPU/mock 验证；用户已同意冻结真实入口验收线：
+最小 HTTP/流式适配层已完成本地 CPU/mock 与真实双副本验证；冻结验收线及结果为：
 
 1. 非流式响应完成后释放 lease；
 2. SSE 流完整结束后释放，不能在响应头到达时释放；
@@ -288,6 +289,8 @@ git status --short
 8. 输出吞吐中位数至少保留确定性直连的 90%，即 `301.342 tok/s`；
 9. Short P95 TTFT/TPOT/E2E 必须分别不高于 600/50/6000 ms。
 
-仓库新增 `docs/PHASE4_ROUTER_EXPERIMENT.md`和独立 `seed_offset=700000`场景，设计复用现有 `maxSurge=0`静态双副本覆盖层，让代理与 benchmark 运行在同一无 GPU client Pod。下一步先由用户检查并提交这份离线设计，再执行只读动态资源审计。审计任一安全门失败就停止，不扩容；通过后也必须由用户本人决定并执行 apply。
+2026-09-08 安全审计确认公司 Pod 位于物理GPU0、原项目副本位于GPU1，GPU2/3同时满足宿主机无进程和Kubernetes未分配。用户执行双副本 apply 后，新副本落在GPU2；三轮300/300正式请求成功，中位输出吞吐335.349 tok/s，P95 TTFT/TPOT/E2E为456.041/42.438/5527.425 ms。正式窗口51个五秒采样点两侧最大running为8/8、waiting均为0；路由选择占比约48.5%/51.5%，最终in-flight为0/0。用户随后恢复base单副本并删除client，GPU2回到1 MiB，公司GPU0和Pod状态未变化。
+
+真实结果、文档和 `analysis/generated/phase4-routing-comparison.svg` 已固化，下一步仅需用户检查后提交并推送；不再为了“完成自动扩缩容”重新占用公司GPU。若继续技术扩展，优先做纯离线长短混合权重模拟或 EndpointSlice 设计评审，而非在共享集群安装控制器。
 
 不要立即执行真实自动扩缩容。当前 Phase 4 最有价值的已完成证据是“容量、分流、冷启动”三者的拆分；真实弹性实验是否值得做，要同时考虑共享环境、155 秒启动和可持续流量场景，不能为了简历形式勉强占用公司资源。

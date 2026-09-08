@@ -81,7 +81,7 @@ HPA（Horizontal Pod Autoscaler）是 Kubernetes 原生的水平副本自动伸�
 
 验收：能够说明策略适用条件、收益和冷启动带来的限制，而不只展示 HPA 成功扩容。
 
-当前真实 least-inflight 入口实验的预注册指标、tmux约束与共享环境停止条件见 `PHASE4_ROUTER_EXPERIMENT.md`。该设计不代表实验已经执行，也不把静态路由验证写成自动扩缩容。
+真实 least-inflight 入口实验已按 `PHASE4_ROUTER_EXPERIMENT.md` 的预注册指标、tmux约束和共享环境停止条件完成，并在实验后恢复单副本。该静态路由验证不等同于自动扩缩容；受155秒冷启动和公司集群权限边界约束，自动控制器仍只保留离线策略回放证据。
 
 ## 4. 技术约束
 

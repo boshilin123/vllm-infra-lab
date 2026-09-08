@@ -96,6 +96,8 @@ python benchmark/run_dual_target_benchmark.py \
 
 本实验不是普通 Service复测，也不是确定性双客户端拆分。验收线和安全回退见 `docs/PHASE4_ROUTER_EXPERIMENT.md`。Pod IP、GPU UUID和物理编号必须在当次扩容后重新解析，不能复制历史值；正式命令必须通过 tmux运行，不能依赖 SSH 前台会话。
 
+2026-09-08 真实结果位于 `results/2026-09-08/20260908-002836-phase4-least-inflight-c16-mns8-r2/`：三轮300/300成功，中位输出吞吐335.349 tok/s，P95 TTFT/TPOT/E2E为456.041/42.438/5527.425 ms。实验完成后已恢复 base 单副本并释放临时 GPU。
+
 ## Prefill / Decode 单变量对照
 
 Phase 2 在并发 8、`max-num-seqs=8` 下使用四组负载：

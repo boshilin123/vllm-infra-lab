@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""从已提交的 aggregate.json 生成无第三方依赖的 Phase 2 SVG 图表。"""
+"""从已提交的 aggregate.json 生成无第三方依赖的性能 SVG 图表。"""
 
 from __future__ import annotations
 
@@ -35,6 +35,12 @@ WORKLOAD_COMPARISON = {
     "Combined\n1024/256": "results/2026-09-06/20260906-135718-long-context-c8-mns8/aggregate.json",
 }
 
+ROUTING_COMPARISON = {
+    "Kubernetes\nService": "results/2026-09-07/20260907-153612-phase4-static-c16-mns8-r2/aggregate.json",
+    "Direct fixed\n8 / 8": "results/2026-09-07/20260907-023250-phase4-direct-split-c16-mns8-r2/aggregate.json",
+    "Least-inflight\nproxy": "results/2026-09-08/20260908-002836-phase4-least-inflight-c16-mns8-r2/aggregate.json",
+}
+
 COLORS = ["#2563eb", "#0d9488", "#d97706", "#7c3aed", "#dc2626"]
 GRID = "#d8dee9"
 TEXT = "#172033"
@@ -44,7 +50,7 @@ SLO = "#dc2626"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="读取 Phase 2 aggregate.json 并生成三张 SVG 性能图。"
+        description="读取 aggregate.json 并生成可复现的 SVG 性能图。"
     )
     parser.add_argument(
         "--output-dir",
@@ -433,6 +439,23 @@ def main() -> int:
             },
             panels=common_panels,
             footnote="mns16 improves throughput and queueing delay, but P95 TTFT and E2E still miss the pre-registered Short SLO.",
+        )
+    )
+
+    paths.append(
+        generate_bar_grid(
+            output_dir=output_dir,
+            filename="phase4-routing-comparison.svg",
+            title="Phase 4 dual-replica routing comparison",
+            subtitle="Qwen3-8B BF16 · c16/mns8 · 256/128 tokens · two A10 · median of 3 repeats · 100 measured requests/repeat",
+            inputs=ROUTING_COMPARISON,
+            expected={
+                "Kubernetes\nService": ("phase4-static", 16, 8),
+                "Direct fixed\n8 / 8": ("phase4-direct-split", 16, 8),
+                "Least-inflight\nproxy": ("phase4-least-inflight", 16, 8),
+            },
+            panels=common_panels,
+            footnote="Least-inflight matches direct 8/8 throughput within run-to-run noise and restores the pre-registered Short SLO; fixed synthetic workload only.",
         )
     )
 

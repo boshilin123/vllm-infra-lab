@@ -75,13 +75,15 @@ flowchart LR
 - 同卡 Prefill/Decode 对照中，Prompt 从 256 增至 1024 使 P95 TTFT 上升约 201%；输出从 128 增至 256 使 P95 E2E 增加约 5.10 s，而 P95 TPOT 基本不变。
 - 双副本普通 Service 与确定性 8/8 对照的输出吞吐均约 333～335 tok/s，但后者将 P95 TTFT/E2E 从 5469/10742 ms降至 525/5544 ms，证明连接级瞬时分流会阻碍横向容量转化为 SLO 收益。
 - 用已保存的 15 秒时间线离线回放 waiting 弹性策略：连续两点触发后叠加 155 秒冷启动，第二副本计划 Ready 时间晚于最后负载采样约 20 秒，说明 `minReplicas=1` 的纯反应式扩容无法挽救该短突发。
-- least-inflight HTTP/SSE 适配与本地状态取证已通过 mock 测试；真实双副本验收线已冻结，但尚未执行，不能提前引用确定性直连数据作为代理收益。
+- 自研实验性 least-inflight HTTP/SSE 代理完成真实双副本验证：三轮300/300成功，中位输出吞吐335.349 tok/s，P95 TTFT/TPOT/E2E为456/42.4/5527 ms；51个五秒采样点两侧 waiting 均为0，性能与确定性8/8直连持平，并在实验后恢复单副本。
 
 ![Short 并发扫描](analysis/generated/concurrency-scan.svg)
 
 ![max-num-seqs 参数对照](analysis/generated/max-num-seqs-comparison.svg)
 
 ![Prefill 与 Decode 对照](analysis/generated/workload-comparison.svg)
+
+![Phase 4 双副本路由对照](analysis/generated/phase4-routing-comparison.svg)
 
 ## 仓库结构
 
@@ -110,8 +112,8 @@ vllm-infra-lab/
 - [x] 完成并发与请求长度基准测试（Short c1/2/4/8/16 与 Prefill/Decode/组合长上下文对照）
 - [x] 完成 vLLM 与 GPU 可观测性（ServiceMonitor、13-panel Dashboard JSON、Prometheus/DCGM 统一时间线；按安全边界不写公司共享 Grafana）
 - [x] 完成首个关键引擎参数对照实验（`max-num-seqs` 8/16）
-- [ ] 完成多副本与弹性扩缩容实验
-- [ ] 固化结果、复现步骤与简历数据
+- [x] 完成静态多副本、确定性分流、真实 least-inflight 入口与离线弹性策略验证
+- [x] 固化结果、复现步骤、可复现对比图与简历数据
 
 详细方案见 [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)，实验设计见 [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)，当前可用的简历表述与面试边界见 [docs/RESUME_DRAFT.md](docs/RESUME_DRAFT.md)。
 

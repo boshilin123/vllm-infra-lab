@@ -1,6 +1,6 @@
 # Least-inflight 路由与最小 HTTP 适配
 
-`least_inflight.py`实现 Phase 4 的 CPU-only 请求级选择核心。`http_proxy.py`在它之上增加仅依赖 Python 标准库的最小 HTTP/SSE 适配；当前只通过本地 mock backend 验证，不连接 Kubernetes，也不访问真实 vLLM Pod。
+`least_inflight.py`实现 Phase 4 的 CPU-only 请求级选择核心。`http_proxy.py`在它之上增加仅依赖 Python 标准库的最小 HTTP/SSE 适配；除本地 mock backend 外，已在一次受控双 A10、双 vLLM Pod 实验中完成真实入口验证。
 
 `in-flight`表示已经被路由器接收并转发、但生命周期尚未结束的请求，包括后端 waiting、Prefill、Decode 和仍在传输的流式响应。它不是“已经收到响应头”的请求数，也不等于 Prometheus 的瞬时 running gauge。
 
@@ -72,4 +72,4 @@ python3 -m unittest tests/test_http_proxy.py -v
 - 没有 TLS 终止、认证、访问日志、指标、优雅摘流和跨进程共享状态；
 - 仍只按请求数量计权，尚未实现 Token-aware 或 EWMA 权重。
 
-固定 256/128 Token 的对照中请求成本一致，适合验证 8/8；真实长短混合请求中，一个长请求和一个短请求都只计作 1，因此后续可增加 Prompt Token、`max_tokens` 或完成时长 EWMA 权重。当前准确表述是“least-inflight 核心与最小 HTTP/SSE 适配已通过本地 mock 验证”，不能声称已经部署生产队列感知负载均衡器。
+固定 256/128 Token 的真实对照中请求成本一致：三轮300/300正式请求成功，中位吞吐335.349 tok/s，P95 TTFT/TPOT/E2E为456.041/42.438/5527.425 ms，51个正式窗口五秒采样点两侧 waiting 均为0。真实长短混合请求中，一个长请求和一个短请求都只计作1，因此后续可增加 Prompt Token、`max_tokens`或完成时长 EWMA 权重。当前准确表述是“实验性 least-inflight HTTP/SSE 代理已通过一次固定成本真实双副本验证”，不能声称已经部署生产队列感知负载均衡器。
