@@ -30,6 +30,10 @@ Prometheus 15 秒采样适合容量趋势和审计，不适合逐请求选路。
 
 已经进入某个 vLLM waiting 队列的请求不会因扩容自动迁移。第二副本 Ready 后，路由器只能把后续新请求送过去；这也是扩容和路由必须协同、但职责不能混淆的原因。
 
+路由选择与生命周期记账核心已在 `router/least_inflight.py` 实现，使用线程锁保证“选择最小值并加一”是一个原子操作；`BackendLease`保证正常完成、异常和重复释放路径不会泄漏计数。16 个同时持有的等成本请求测试得到 8/8，健康后端摘除、全部不可用、平局轮询和并发 acquire 均有单元测试。
+
+该核心没有监听端口或转发 HTTP，因此仍不能称为已部署的队列感知负载均衡器。下一层适配必须把 lease 生命周期覆盖到完整非流式响应或完整流式响应，而不是收到响应头就释放：响应头到达后 vLLM 通常仍在 Decode，提前释放会让忙碌后端被误报为空闲。
+
 ## 2. 离线策略配置
 
 版本化策略位于 `analysis/autoscaling-policy.json`，回放器位于 `analysis/simulate_autoscaling.py`。它只读取已提交的 `timeline.csv`，不会连接 Kubernetes、Prometheus 或公司服务：

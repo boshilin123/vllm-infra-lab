@@ -93,6 +93,7 @@ vllm-infra-lab/
 │   └── aggregate_results.py
 ├── monitoring/          # ServiceMonitor、PrometheusRule 与 Grafana Dashboard
 ├── analysis/            # 可复现性能图与后续时序指标关联
+├── router/              # CPU-only least-inflight 选择与请求生命周期记账核心
 ├── tests/               # 离线策略等标准库单元测试
 ├── scripts/             # 部署、冒烟测试与环境元数据采集
 ├── results/             # 经脱敏的原始结果、汇总数据和图表
