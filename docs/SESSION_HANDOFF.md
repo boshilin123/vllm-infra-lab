@@ -60,7 +60,7 @@ Pod 名称、Pod IP、物理 GPU 编号都可能在重建后改变。必须通�
 | Phase 1 单副本服务 | 已完成 | Deployment/Service、三类探针、OpenAI API、Pod 自愈 |
 | Phase 2 性能与参数 | 已完成 | 并发扫描、mns8/16、Prefill/Decode、三轮聚合、确定性 SVG |
 | Phase 3 可观测性 | 已完成 | ServiceMonitor、13 条 PromQL、Grafana schema 37 JSON、统一时间线 |
-| Phase 4 多副本与弹性 | 进行中 | 静态双副本、确定性 8/8、离线弹性回放、least-inflight 核心；尚缺 HTTP/流式适配与是否执行真实弹性实验的决策 |
+| Phase 4 多副本与弹性 | 进行中 | 静态双副本、确定性 8/8、离线弹性回放、least-inflight 核心与最小 HTTP/SSE mock 验证；尚缺是否执行真实入口/弹性实验的决策 |
 
 ## 5. 已冻结的 SLO
 
@@ -169,13 +169,15 @@ DCGM framebuffer 全程约 20,212 MiB 是预分配常驻显存；vLLM KV usage �
 
 新容量晚于最后负载采样约 20 秒，说明 `minReplicas=1` 的纯反应式扩容无法挽救这次短突发。它更适合持续压力、预测预热，或者用长期第二副本换响应时间。离线回放不代表 Kubernetes 中真实发生过自动扩容。
 
-## 9. 本轮新增的 least-inflight 路由核心
+## 9. 本轮新增的 least-inflight 路由与 HTTP 适配
 
 本轮已新增：
 
 - `router/least_inflight.py`
+- `router/http_proxy.py`
 - `router/README.md`
 - `tests/test_least_inflight.py`
+- `tests/test_http_proxy.py`
 - 相关架构、策略、项目日志和简历文档更新
 
 `in-flight`表示已经被路由器接收并转发、但完整生命周期尚未结束的请求，包含后端 waiting、Prefill、Decode 和仍在传输的流式响应。
@@ -189,9 +191,14 @@ DCGM framebuffer 全程约 20,212 MiB 是预分配常驻显存；vLLM KV usage �
 - 后端摘除只影响新请求，不中断已有 lease
 - 所有后端不可用时快速失败
 - 16 个同时持有的等成本请求形成 8/8
-- 7 个路由专项测试；全仓当前 11 个测试通过
+- 最小 HTTP/1.0 代理转发 GET/POST/PUT/PATCH/DELETE
+- 非流式写完和 SSE 流结束后才释放 lease
+- 客户端断开、上游异常路径通过 `finally` 清理，不泄漏计数
+- 固定 `/health` 探测支持摘除与恢复；全不可用返回 503
+- 已发送请求不自动改投另一后端；16 个同时持有的 HTTP 请求形成 8/8
+- least-inflight 核心 7 个、HTTP 适配 8 个、弹性回放 4 个，全仓当前 19 个测试通过
 
-尚未实现：HTTP 监听/转发、SSE 流式代理、客户端断开传播、真实健康检查、Kubernetes EndpointSlice 服务发现、重试策略、Token-aware 权重。不能把当前模块称为“生产队列感知负载均衡器”。
+尚未实现：Kubernetes EndpointSlice 服务发现、生产级连接池/背压/限流、认证与指标、优雅摘流、Token-aware 权重。客户端断开在下一次下游写入时被发现；若上游长时间没有新 chunk，取消感知会延后。当前仅通过本地 mock backend 验证，不能称为“已部署的生产队列感知负载均衡器”。
 
 流式请求不能在收到响应头时释放 in-flight，因为此时后端通常仍在 Decode。必须等流正常结束、客户端断开或异常清理。后端不健康时，新请求应转向其他健康后端；已开始且连接正常的请求继续，生成中途失败不能盲目重试，否则可能重复或改变输出。
 
@@ -251,14 +258,14 @@ DCGM framebuffer 全程约 20,212 MiB 是预分配常驻显存；vLLM KV usage �
 本轮开始前远端 HEAD：
 
 ```text
-3643d27 analysis: add offline autoscaling policy replay
+88fac32 router: add least-inflight routing core
 ```
 
-生成本摘要时，工作区包含待用户提交的 least-inflight 核心、测试和文档更新；若用户随后已经提交，新会话应以 Git 实际状态为准。提交前校验命令为：
+本轮开始时该提交已位于 `origin/main`且工作区干净。生成本次更新时，工作区包含待用户提交的最小 HTTP/SSE 适配、测试和文档；若用户随后已经提交，新会话应以 Git 实际状态为准。提交前校验命令为：
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
-python3 -m py_compile router/__init__.py router/least_inflight.py
+python3 -m py_compile router/__init__.py router/least_inflight.py router/http_proxy.py
 ruff check router tests
 git diff --check
 git status --short
@@ -268,7 +275,7 @@ git status --short
 
 ## 14. 下一步建议
 
-下一步仍然只做离线 CPU 工作：设计最小 HTTP/流式适配层，并用本地 mock backend 验证：
+最小 HTTP/流式适配层已完成本地 CPU/mock 验证：
 
 1. 非流式响应完成后释放 lease；
 2. SSE 流完整结束后释放，不能在响应头到达时释放；
@@ -278,6 +285,6 @@ git status --short
 6. 已发送并开始生成的请求不做盲目自动重试；
 7. 16 个固定成本请求仍形成接近 8/8。
 
-开始实现前先检查仓库是否已有合适 HTTP 依赖；没有时不要为了一个最小实验随意引入大型框架。HTTP mock 验证完成后，再由用户决定是否值得短时运行真实双副本入口实验。任何真实实验前必须重新做公司服务、GPU/CPU/内存、Pending Pod、Deployment 上限和回退方案审计。
+仓库没有现成 HTTP 框架，因此使用 Python 标准库完成最小实现，没有引入大型依赖。下一步由用户检查 diff 并决定是否值得短时运行真实双副本入口实验。任何真实实验前必须重新做公司服务、GPU/CPU/内存、Pending Pod、Deployment 上限和回退方案审计；还必须先设计仅作用于本 namespace、最多两个 GPU Pod、`maxSurge=0`且可立即恢复单副本的入口覆盖层。
 
 不要立即执行真实自动扩缩容。当前 Phase 4 最有价值的已完成证据是“容量、分流、冷启动”三者的拆分；真实弹性实验是否值得做，要同时考虑共享环境、155 秒启动和可持续流量场景，不能为了简历形式勉强占用公司资源。
