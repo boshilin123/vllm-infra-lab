@@ -75,6 +75,7 @@ flowchart LR
 - 同卡 Prefill/Decode 对照中，Prompt 从 256 增至 1024 使 P95 TTFT 上升约 201%；输出从 128 增至 256 使 P95 E2E 增加约 5.10 s，而 P95 TPOT 基本不变。
 - 双副本普通 Service 与确定性 8/8 对照的输出吞吐均约 333～335 tok/s，但后者将 P95 TTFT/E2E 从 5469/10742 ms降至 525/5544 ms，证明连接级瞬时分流会阻碍横向容量转化为 SLO 收益。
 - 用已保存的 15 秒时间线离线回放 waiting 弹性策略：连续两点触发后叠加 155 秒冷启动，第二副本计划 Ready 时间晚于最后负载采样约 20 秒，说明 `minReplicas=1` 的纯反应式扩容无法挽救该短突发。
+- least-inflight HTTP/SSE 适配与本地状态取证已通过 mock 测试；真实双副本验收线已冻结，但尚未执行，不能提前引用确定性直连数据作为代理收益。
 
 ![Short 并发扫描](analysis/generated/concurrency-scan.svg)
 

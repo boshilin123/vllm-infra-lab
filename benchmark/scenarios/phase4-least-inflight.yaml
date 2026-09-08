@@ -1,0 +1,10 @@
+name: phase4-least-inflight
+description: Phase 4 真实 least-inflight HTTP/SSE 路由验证；静态双副本，不代表自动扩缩容。
+prompt_tokens: 256
+output_tokens: 128
+concurrency:
+  - 16
+warmup_requests: 16
+measured_requests: 100
+repeats: 3
+seed_offset: 700000

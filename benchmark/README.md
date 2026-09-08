@@ -90,6 +90,12 @@ python benchmark/run_dual_target_benchmark.py \
 
 每轮保留 `target-1-repeat-NN.json`、`target-2-repeat-NN.json` 两份 vLLM 原始结果，并从两边逐请求样本重新计算 TTFT/TPOT/ITL/E2E 的 P50/P95/P99。吞吐分母采用两个近同步子任务中较长的服务端测量窗口，不把两个 P95 简单平均，也不把父进程加载 tokenizer 的时间混入服务吞吐。生成的 `repeat-NN.json` 继续交给 `aggregate_results.py` 做统一校验和汇总。
 
+## Phase 4 least-inflight 真实入口
+
+`phase4-least-inflight.yaml`固定 256/128 Token、总并发 16、每轮 16 个预热与 100 个正式请求、三轮重复，并使用独立 `seed_offset=700000`。真实执行时，代理与 benchmark 必须位于同一个 `phase4-benchmark-client` Pod：benchmark 访问 `127.0.0.1:18080`，代理再直连扩容后动态确认的两个 Pod IP。
+
+本实验不是普通 Service复测，也不是确定性双客户端拆分。验收线和安全回退见 `docs/PHASE4_ROUTER_EXPERIMENT.md`。Pod IP、GPU UUID和物理编号必须在当次扩容后重新解析，不能复制历史值；正式命令必须通过 tmux运行，不能依赖 SSH 前台会话。
+
 ## Prefill / Decode 单变量对照
 
 Phase 2 在并发 8、`max-num-seqs=8` 下使用四组负载：

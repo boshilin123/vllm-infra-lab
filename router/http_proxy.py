@@ -83,6 +83,9 @@ class LeastInflightProxyHandler(BaseHTTPRequestHandler):
     server: LeastInflightProxyServer
 
     def do_GET(self) -> None:  # noqa: N802
+        if urlsplit(self.path).path == "/_router/status":
+            self._router_status()
+            return
         self._proxy()
 
     def do_POST(self) -> None:  # noqa: N802
@@ -195,7 +198,29 @@ class LeastInflightProxyHandler(BaseHTTPRequestHandler):
                 self.send_header(name, value)
 
     def _send_json(self, status: HTTPStatus, message: str) -> None:
-        payload = json.dumps({"error": message}, ensure_ascii=False).encode("utf-8")
+        self._send_json_payload(status, {"error": message})
+
+    def _router_status(self) -> None:
+        snapshots = self.server.router.snapshots()
+        self._send_json_payload(
+            HTTPStatus.OK,
+            {
+                "policy": "least-inflight",
+                "backends": [
+                    {
+                        "name": snapshot.name,
+                        "base_url": snapshot.base_url,
+                        "healthy": snapshot.healthy,
+                        "in_flight": snapshot.in_flight,
+                        "selections_total": snapshot.selections_total,
+                    }
+                    for snapshot in snapshots
+                ],
+            },
+        )
+
+    def _send_json_payload(self, status: HTTPStatus, value: object) -> None:
+        payload = json.dumps(value, ensure_ascii=False, sort_keys=True).encode("utf-8")
         try:
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")

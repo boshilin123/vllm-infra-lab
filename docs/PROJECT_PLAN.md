@@ -81,6 +81,8 @@ HPA（Horizontal Pod Autoscaler）是 Kubernetes 原生的水平副本自动伸�
 
 验收：能够说明策略适用条件、收益和冷启动带来的限制，而不只展示 HPA 成功扩容。
 
+当前真实 least-inflight 入口实验的预注册指标、tmux约束与共享环境停止条件见 `PHASE4_ROUTER_EXPERIMENT.md`。该设计不代表实验已经执行，也不把静态路由验证写成自动扩缩容。
+
 ## 4. 技术约束
 
 - Qwen3-8B BF16 权重约 16 GiB，单张 23 GiB A10 的 KV Cache 空间有限。

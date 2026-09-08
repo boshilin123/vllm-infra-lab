@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import importlib.metadata
-import json
 import os
 import shutil
 import socket

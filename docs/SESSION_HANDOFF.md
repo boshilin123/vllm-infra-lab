@@ -60,7 +60,7 @@ Pod 名称、Pod IP、物理 GPU 编号都可能在重建后改变。必须通�
 | Phase 1 单副本服务 | 已完成 | Deployment/Service、三类探针、OpenAI API、Pod 自愈 |
 | Phase 2 性能与参数 | 已完成 | 并发扫描、mns8/16、Prefill/Decode、三轮聚合、确定性 SVG |
 | Phase 3 可观测性 | 已完成 | ServiceMonitor、13 条 PromQL、Grafana schema 37 JSON、统一时间线 |
-| Phase 4 多副本与弹性 | 进行中 | 静态双副本、确定性 8/8、离线弹性回放、least-inflight 核心与最小 HTTP/SSE mock 验证；尚缺是否执行真实入口/弹性实验的决策 |
+| Phase 4 多副本与弹性 | 进行中 | 静态双副本、确定性 8/8、离线弹性回放、least-inflight HTTP/SSE mock 验证；真实入口标准已冻结，尚未执行安全审计或真实实验 |
 
 ## 5. 已冻结的 SLO
 
@@ -196,7 +196,8 @@ DCGM framebuffer 全程约 20,212 MiB 是预分配常驻显存；vLLM KV usage �
 - 客户端断开、上游异常路径通过 `finally` 清理，不泄漏计数
 - 固定 `/health` 探测支持摘除与恢复；全不可用返回 503
 - 已发送请求不自动改投另一后端；16 个同时持有的 HTTP 请求形成 8/8
-- least-inflight 核心 7 个、HTTP 适配 8 个、弹性回放 4 个，全仓当前 19 个测试通过
+- least-inflight 核心 7 个、HTTP 适配 9 个、弹性回放 4 个，全仓当前 20 个测试通过
+- `/_router/status`只读返回每个后端的健康、in-flight 和累计选择数，不把状态查询转发到后端
 
 尚未实现：Kubernetes EndpointSlice 服务发现、生产级连接池/背压/限流、认证与指标、优雅摘流、Token-aware 权重。客户端断开在下一次下游写入时被发现；若上游长时间没有新 chunk，取消感知会延后。当前仅通过本地 mock backend 验证，不能称为“已部署的生产队列感知负载均衡器”。
 
@@ -255,13 +256,13 @@ DCGM framebuffer 全程约 20,212 MiB 是预分配常驻显存；vLLM KV usage �
 
 ## 13. Git 与本轮状态
 
-本轮开始前远端 HEAD：
+当前已推送的远端 HEAD：
 
 ```text
-88fac32 router: add least-inflight routing core
+29d5648 router: add minimal HTTP streaming proxy
 ```
 
-本轮开始时该提交已位于 `origin/main`且工作区干净。生成本次更新时，工作区包含待用户提交的最小 HTTP/SSE 适配、测试和文档；若用户随后已经提交，新会话应以 Git 实际状态为准。提交前校验命令为：
+该提交已位于 `origin/main`且工作区曾确认干净。生成本次更新时，工作区包含待用户提交的只读路由状态端点、真实入口独立场景、预注册实验设计和文档更新；若用户随后已经提交，新会话应以 Git 实际状态为准。提交前校验命令为：
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
@@ -275,7 +276,7 @@ git status --short
 
 ## 14. 下一步建议
 
-最小 HTTP/流式适配层已完成本地 CPU/mock 验证：
+最小 HTTP/流式适配层已完成本地 CPU/mock 验证；用户已同意冻结真实入口验收线：
 
 1. 非流式响应完成后释放 lease；
 2. SSE 流完整结束后释放，不能在响应头到达时释放；
@@ -283,8 +284,10 @@ git status --short
 4. 健康后端摘除与恢复；
 5. 所有后端不可用时明确返回 503；
 6. 已发送并开始生成的请求不做盲目自动重试；
-7. 16 个固定成本请求仍形成接近 8/8。
+7. 16 个固定成本请求仍形成接近 8/8；
+8. 输出吞吐中位数至少保留确定性直连的 90%，即 `301.342 tok/s`；
+9. Short P95 TTFT/TPOT/E2E 必须分别不高于 600/50/6000 ms。
 
-仓库没有现成 HTTP 框架，因此使用 Python 标准库完成最小实现，没有引入大型依赖。下一步由用户检查 diff 并决定是否值得短时运行真实双副本入口实验。任何真实实验前必须重新做公司服务、GPU/CPU/内存、Pending Pod、Deployment 上限和回退方案审计；还必须先设计仅作用于本 namespace、最多两个 GPU Pod、`maxSurge=0`且可立即恢复单副本的入口覆盖层。
+仓库新增 `docs/PHASE4_ROUTER_EXPERIMENT.md`和独立 `seed_offset=700000`场景，设计复用现有 `maxSurge=0`静态双副本覆盖层，让代理与 benchmark 运行在同一无 GPU client Pod。下一步先由用户检查并提交这份离线设计，再执行只读动态资源审计。审计任一安全门失败就停止，不扩容；通过后也必须由用户本人决定并执行 apply。
 
 不要立即执行真实自动扩缩容。当前 Phase 4 最有价值的已完成证据是“容量、分流、冷启动”三者的拆分；真实弹性实验是否值得做，要同时考虑共享环境、155 秒启动和可持续流量场景，不能为了简历形式勉强占用公司资源。

@@ -53,7 +53,9 @@ python3 -m router.http_proxy \
 - 所有后端不可用时返回 503，上游建立失败时返回 502；
 - 每次请求只选择一个后端，不对已经发送或开始生成的请求做自动重试。
 
-本地 mock 测试覆盖非流式完成、SSE 响应头后仍持有 lease、流式客户端断开、上游连接错误、健康摘除/恢复、全不可用 503，以及 16 个同时持有的 HTTP 请求形成 8/8：
+代理本地提供 `GET /_router/status`，返回策略名以及每个后端的 `healthy`、`in_flight`和`selections_total`。该查询不会 acquire lease或访问后端，用于离线测试和真实实验取证；它没有认证与 Prometheus 格式，不能视为生产管理接口。
+
+本地 mock 测试覆盖非流式完成、SSE 响应头后仍持有 lease、流式客户端断开、上游连接错误、健康摘除/恢复、全不可用 503、只读状态端点，以及 16 个同时持有的 HTTP 请求形成 8/8：
 
 ```bash
 python3 -m unittest tests/test_http_proxy.py -v

@@ -144,6 +144,15 @@ class HttpProxyTest(unittest.TestCase):
         connection.close()
         return status, body, headers
 
+    def get(self, path: str) -> tuple[int, bytes]:
+        connection = http.client.HTTPConnection("127.0.0.1", self.proxy.server_port, 5)
+        connection.request("GET", path)
+        response = connection.getresponse()
+        status = response.status
+        body = response.read()
+        connection.close()
+        return status, body
+
     def loads(self) -> dict[str, int]:
         return {snapshot.name: snapshot.in_flight for snapshot in self.router.snapshots()}
 
@@ -262,6 +271,22 @@ class HttpProxyTest(unittest.TestCase):
         self.assertEqual(
             [snapshot.selections_total for snapshot in self.router.snapshots()], [0, 0]
         )
+
+    def test_status_endpoint_is_local_and_does_not_select_backend(self) -> None:
+        lease = self.router.acquire()
+        status, body = self.get("/_router/status")
+        payload = json.loads(body)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["policy"], "least-inflight")
+        self.assertEqual(
+            [
+                (item["name"], item["healthy"], item["in_flight"], item["selections_total"])
+                for item in payload["backends"]
+            ],
+            [("a", True, 1, 1), ("b", True, 0, 0)],
+        )
+        self.assertEqual([state.requests for state in self.states], [0, 0])
+        lease.release()
 
     def test_sixteen_held_http_requests_split_eight_eight(self) -> None:
         with ThreadPoolExecutor(max_workers=16) as executor:
